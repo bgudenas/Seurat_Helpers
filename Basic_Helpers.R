@@ -1,5 +1,10 @@
-PlotSeurat = function(plot, name, path ){
+simpleCap <- function(x) {
+    s <- strsplit(x, " ")[[1]]
+    paste(toupper(substring(s, 1,1)), substring(s, 2),
+          sep="", collapse=" ") }
 
+
+PlotSeurat = function(plot, name, path ){
 p1 = p1 + ggtitle(name)
 #p1 = AugmentPlot(plot = p1)
 ggsave(p1, device = "pdf", filename = paste0(path, name, ".pdf"), height = 12, width = 10)
