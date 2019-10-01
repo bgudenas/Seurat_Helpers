@@ -1,13 +1,8 @@
 #!/usr/bin/env Rscript
+source("./Seurat_Helpers/Basic_Helpers.R")
 
 Cell_Filter = function(mega, samps ){
   ## Filter out weird cell populations
-
-  simpleCap <- function(x) {
-    s <- strsplit(x, " ")[[1]]
-    paste(toupper(substring(s, 1,1)), substring(s, 2),
-          sep="", collapse=" ")
-  }
 
 cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE)
 clustmat =  cluster.averages$RNA
@@ -31,21 +26,24 @@ drops = c("Reticulocytes", "Nuocytes", "Platelets","Erythroid−like and erythro
 dropcells = names(mega@active.ident)[ (mega@active.ident %in% drops) ]
 dropcells = unlist(lapply(stringr::str_split(dropcells, "_"), "[[", 1))
 names(dropcells) =  mega$Timepoint[(mega@active.ident %in% drops) ]
-
 mega@active.ident = clusters
-write(dropcells, "./Data/DropCells.txt", append = TRUE)
 
+df = data.frame("Cells" = dropcells, "Timepoint" = names(dropcells) )
+write.table(df, "./Data/DropCells.csv", append = TRUE, sep = ",")
+dropcells = read.csv("./Data/DropCells.csv" )
+rm(mega)
+
+print(samps)
 sampIDs = c()
 for (i in 1:length(samps )) {
-
-  ID = unlist(lapply(stringr::str_split(dirname(samps[i]), "/"), "[[", 2 ))
+   ID = unlist(lapply(stringr::str_split(dirname(samps[i]), "/"), "[[", 3 ))
   print(ID)
   ## Break on "-"; TP is which element has 3 chars
   TP = unlist(stringr::str_split(ID, "-" ))[unlist(lapply(stringr::str_split(ID, "-" ), nchar)) == 3]
   sampIDs = c(sampIDs, TP)
   counts <- Read10X(data.dir = samps[i] )
   
-  drops = dropcells[names(dropcells) %in% TP ]
+  drops = dropcells$Cells[dropcells$Timepoint %in% TP ]
   print(paste("Removed", sum( colnames(counts) %in% drops), "in", TP ))
 
   counts =counts[ , !(colnames(counts) %in% drops) ]
@@ -80,3 +78,4 @@ mega = ProcSeurat(mega,  "CC.Difference")
 
 return(mega)
 }
+
