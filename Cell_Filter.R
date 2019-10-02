@@ -1,6 +1,4 @@
 
-source("./Seurat_Helpers/Basic_Helpers.R")
-
 Celltype_Assign = function(mega, GO_file) {
   
 cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE)
