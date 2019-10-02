@@ -1,5 +1,5 @@
 
-Celltype_Assign = function(mega, GO_file, drops = FALSE) {
+Celltype_Assign = function(mega, GO_file, drops = FALSE, group.var = "Samp", outFig = "Auto_CellType") {
   
 cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE)
 clustmat =  cluster.averages$RNA
@@ -11,10 +11,10 @@ mega@active.ident = as.factor(cellAssignments$SSGSEA [match(mega@active.ident, c
 names(mega@active.ident) = names(clusters)
 
 p1 = DimPlot(object = mega, label = TRUE,  label.size = 5, pt.size = 0.2 ) + ggtitle("Automated Cell types")
-p2 = DimPlot(object = mega, label = TRUE, group.by = "Timepoint",  label.size = 5, pt.size = 0.2 ) + ggtitle( "Timepoints")
+p2 = DimPlot(object = mega, label = TRUE, group.by = group.var,  label.size = 5, pt.size = 0.2 ) + ggtitle( "Timepoints")
 p3 = CombinePlots(plots = list(p1, p2), legend = "none")
-pcount = sum(grepl("UMAP_cellTypes", list.files("~/Proj/scPB/Figures/"))) + 1
-ggsave(p3, device = "pdf", filename = paste0("~/Proj/scPB/Figures/UMAP_cellTypes_", pcount, ".pdf"), width = 14, height = 10)
+
+ggsave(p3, device = "pdf", filename = paste0(outFig, ".pdf"), width = 14, height = 10)
 
 if (drops == TRUE ) {
 drops = c("Reticulocytes", "Nuocytes", "Platelets","Erythroid−like and erythroid precursor cells","Basophils","Macrophages", 
