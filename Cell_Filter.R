@@ -1,5 +1,5 @@
 
-Celltype_Assign = function(mega, GO_file) {
+Celltype_Assign = function(mega, GO_file, drops = FALSE) {
   
 cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE)
 clustmat =  cluster.averages$RNA
@@ -16,6 +16,7 @@ p3 = CombinePlots(plots = list(p1, p2), legend = "none")
 pcount = sum(grepl("UMAP_cellTypes", list.files("~/Proj/scPB/Figures/"))) + 1
 ggsave(p3, device = "pdf", filename = paste0("~/Proj/scPB/Figures/UMAP_cellTypes_", pcount, ".pdf"), width = 14, height = 10)
 
+if (drops == TRUE ) {
 drops = c("Reticulocytes", "Nuocytes", "Platelets","Erythroid−like and erythroid precursor cells","Basophils","Macrophages", 
           "Oligodendrocyte progenitor cells","Ependymal cells", "Immature nerons", 
           "Glutaminergic neurons", "GABAergic neurons", "Cajal-Retzius cells", "Choroid plexus cells", "Myeloid−derived suppressor cells")
@@ -27,6 +28,8 @@ mega@active.ident = clusters
 
 df = data.frame("Cells" = dropcells, "Timepoint" = names(dropcells) )
 write.table(df, "./Data/DropCells.csv", append = TRUE, sep = ",")
+
+}
 
 }
 
