@@ -33,7 +33,7 @@ return(df)
 }
 
  
-ProcSeurat = function(mega, vars.to.regress=NULL ) {
+ProcSeurat = function(mega, vars.to.regress=NULL, nDim = 50, nGenes = 3000 ) {
 
 mega <- NormalizeData(mega, normalization.method = "LogNormalize", scale.factor = 10000)
 
@@ -42,12 +42,12 @@ mega <- ScaleData(mega, vars.to.regress = vars.to.regress )
 } else {
 mega <- ScaleData( object = mega, verbose = FALSE )
 }
-mega <- FindVariableFeatures(mega, nfeatures = 3000 )
-mega <- RunPCA(mega, npcs = 41, ndims.print = 1:5, nfeatures.print = 5 )
+mega <- FindVariableFeatures(mega, nfeatures = nGenes )
+mega <- RunPCA(mega, npcs = 75, ndims.print = 1:5, nfeatures.print = 5 )
 
-mega <- FindNeighbors(mega, reduction = "pca", dims = 1:40 )
+mega <- FindNeighbors(mega, reduction = "pca", dims = 1:nDim )
 mega <- FindClusters(mega,  n.start = 100, random.seed=54321 )
-mega <- RunUMAP(object = mega, reduction = "pca", dims = 1:40)
+mega <- RunUMAP(object = mega, reduction = "pca", dims = 1:nDim )
 
 return(mega)
 }
