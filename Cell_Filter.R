@@ -1,11 +1,11 @@
 
 source("./Seurat_Helpers/Basic_Helpers.R")
 
-Celltype_Assign = function(mega ) {
+Celltype_Assign = function(mega, GO_file) {
   
 cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE)
 clustmat =  cluster.averages$RNA
-GO  = readRDS("./Data/scRNA_celltypes.rds")
+GO  = readRDS( GO_file )
 cellAssignments = AutoCellType(clustmat, GO)
 clusters  = mega@active.ident
 
