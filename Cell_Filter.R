@@ -1,5 +1,8 @@
 
-Celltype_Assign = function(mega, GO_file, drops = FALSE, group.var = "Samp", outFig = "Auto_CellType") {
+Celltype_Assign = function(mega, GO_file, drops = FALSE, group.var = "Samp", outFig = "Auto_CellType", 
+                           drop_celltypes = c("Platelets", "Erythroid−like and erythroid precursor cells","Basophils","Macrophages",
+                                              "Glutaminergic neurons", "GABAergic neurons", "Cajal-Retzius cells", "Choroid plexus cells", 
+                                              "Myeloid−derived suppressor cells", "Oligodendrocyte progenitor cells", "Immature nerons", "GABAergic neurons")) {
   
 cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE)
 clustmat =  cluster.averages$RNA
@@ -17,13 +20,10 @@ p3 = CombinePlots(plots = list(p1, p2), legend = "none")
 ggsave(p3, device = "pdf", filename = paste0(outFig, ".pdf"), width = 14, height = 10)
 
 if (drops == TRUE ) {
-drops = c("Reticulocytes", "Nuocytes", "Platelets","Erythroid−like and erythroid precursor cells","Basophils","Macrophages", 
-          "Oligodendrocyte progenitor cells","Ependymal cells", "Immature nerons", 
-          "Glutaminergic neurons", "GABAergic neurons", "Cajal-Retzius cells", "Choroid plexus cells", "Myeloid−derived suppressor cells")
 
-dropcells = names(mega@active.ident)[ (mega@active.ident %in% drops) ]
+dropcells = names(mega@active.ident)[ (mega@active.ident %in% drop_celltypes) ]
 dropcells = unlist(lapply(stringr::str_split(dropcells, "_"), "[[", 1))
-names(dropcells) =  mega$Timepoint[(mega@active.ident %in% drops) ]
+names(dropcells) =  mega$Timepoint[(mega@active.ident %in% drop_celltypes) ]
 mega@active.ident = clusters
 
 df = data.frame("Cells" = dropcells, "Timepoint" = names(dropcells) )
@@ -33,9 +33,9 @@ write.table(df, "./Data/DropCells.csv", append = TRUE, sep = ",")
 
 }
 
-Reform_Seurat = function(samps ) {
+Reform_Seurat = function(samps, GO_file, group.var = "Samp", outFig = "Auto_CellType", dropFile = "./Data/DropCells.csv") {
   sampIDs = c()
-  dropcells = read.csv("./Data/DropCells.csv", row.names=NULL)
+  dropcells = read.csv(dropFile, row.names=NULL)
   
   for (i in 1:length(samps )) {
     ID = unlist(lapply(stringr::str_split(dirname(samps[i]), "/"), "[[", 3 ))
@@ -74,6 +74,22 @@ Reform_Seurat = function(samps ) {
   mega <- CellCycleScoring(mega, s.features = s.genes, g2m.features = g2m.genes, set.ident = TRUE)
   mega$CC.Difference <- mega$S.Score - mega$G2M.Score
   mega = ProcSeurat(mega,  "CC.Difference")
+  ################################################
+  ### Cell type detection
+  cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE)
+  clustmat =  cluster.averages$RNA
+  GO  = readRDS( GO_file )
+  cellAssignments = AutoCellType(clustmat, GO)
+  clusters  = mega@active.ident
+  
+  mega@active.ident = as.factor(cellAssignments$SSGSEA [match(mega@active.ident, cellAssignments$Cluster) ] )
+  names(mega@active.ident) = names(clusters)
+  
+  p1 = DimPlot(object = mega, label = TRUE,  label.size = 5, pt.size = 0.2 ) + ggtitle("Automated Cell types")
+  p2 = DimPlot(object = mega, label = TRUE, group.by = group.var,  label.size = 5, pt.size = 0.2 ) + ggtitle( "Timepoints")
+  p3 = CombinePlots(plots = list(p1, p2), legend = "none")
+  
+  ggsave(p3, device = "pdf", filename = paste0(outFig, ".pdf"), width = 14, height = 10)
   
   return(mega)
 }
