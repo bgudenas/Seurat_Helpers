@@ -45,7 +45,7 @@ Reform_Seurat = function(samps, GO_file, group.var = "Timepoint", outFig = "Auto
     sampIDs = c(sampIDs, TP)
     counts <- Read10X(data.dir = samps[i] )
     
-    drops = dropcells$Cells[dropcells[colnames(dropcells) == group.var ] %in% TP ]
+    drops = dropcells$Cells[dropcells$group.var ==  TP ]
     print(paste("Removed", sum( colnames(counts) %in% drops), "in", TP ))
     
     counts =counts[ , !(colnames(counts) %in% drops) ]
