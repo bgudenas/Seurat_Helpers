@@ -1,5 +1,5 @@
 
-Celltype_Assign = function(mega, GO_file, drops = FALSE, group.var = "Samp", outFig = "Auto_CellType", 
+Celltype_Assign = function(mega, GO_file, drops = FALSE, dropFile = "./Data/DropCells.csv", group.var = "Timepoint", outFig = "Auto_CellType", 
                            drop_celltypes = c("Platelets", "Erythroid−like and erythroid precursor cells","Basophils","Macrophages",
                                               "Glutaminergic neurons", "GABAergic neurons", "Cajal-Retzius cells", "Choroid plexus cells", 
                                               "Myeloid−derived suppressor cells", "Oligodendrocyte progenitor cells", "Immature nerons", "GABAergic neurons")) {
@@ -26,14 +26,14 @@ dropcells = unlist(lapply(stringr::str_split(dropcells, "_"), "[[", 1))
 names(dropcells) =  mega$Timepoint[(mega@active.ident %in% drop_celltypes) ]
 mega@active.ident = clusters
 
-df = data.frame("Cells" = dropcells, "Timepoint" = names(dropcells) )
-write.table(df, "./Data/DropCells.csv", append = TRUE, sep = ",")
+df = data.frame("Cells" = dropcells, group.var = names(dropcells) )
+write.table(df, dropFile, append = TRUE, sep = ",")
 
 }
 
 }
 
-Reform_Seurat = function(samps, GO_file, group.var = "Samp", outFig = "Auto_CellType", dropFile = "./Data/DropCells.csv") {
+Reform_Seurat = function(samps, GO_file, group.var = "Timepoint", outFig = "Auto_CellType", dropFile = "./Data/DropCells.csv") {
   sampIDs = c()
   dropcells = read.csv(dropFile, row.names=NULL)
   
@@ -45,7 +45,7 @@ Reform_Seurat = function(samps, GO_file, group.var = "Samp", outFig = "Auto_Cell
     sampIDs = c(sampIDs, TP)
     counts <- Read10X(data.dir = samps[i] )
     
-    drops = dropcells$Cells[dropcells$Timepoint %in% TP ]
+    drops = dropcells$Cells[dropcells[colnames(dropcells) == group.var ] %in% TP ]
     print(paste("Removed", sum( colnames(counts) %in% drops), "in", TP ))
     
     counts =counts[ , !(colnames(counts) %in% drops) ]
@@ -86,7 +86,7 @@ Reform_Seurat = function(samps, GO_file, group.var = "Samp", outFig = "Auto_Cell
   names(mega@active.ident) = names(clusters)
   
   p1 = DimPlot(object = mega, label = TRUE,  label.size = 5, pt.size = 0.2 ) + ggtitle("Automated Cell types")
-  p2 = DimPlot(object = mega, label = TRUE, group.by = group.var,  label.size = 5, pt.size = 0.2 ) + ggtitle( "Timepoints")
+  p2 = DimPlot(object = mega, label = TRUE, group.by = group.var,  label.size = 5, pt.size = 0.2 ) + ggtitle( group.var)
   p3 = CombinePlots(plots = list(p1, p2), legend = "none")
   
   ggsave(p3, device = "pdf", filename = paste0(outFig, ".pdf"), width = 14, height = 10)
