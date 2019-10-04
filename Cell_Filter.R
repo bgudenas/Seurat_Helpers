@@ -1,7 +1,7 @@
 
 Celltype_Assign = function(mega, GO_file, drops = FALSE, dropFile = "./Data/DropCells.csv", group.var = "Timepoint", outFig = "Auto_CellType", 
-                           drop_celltypes = c("Platelets", "Erythroid−like and erythroid precursor cells","Basophils","Macrophages",
-                                              "Glutaminergic neurons", "GABAergic neurons", "Cajal-Retzius cells", "Choroid plexus cells", 
+                           drop_celltypes = c("Platelets", "Erythroid−like and erythroid precursor cells","Basophils","Macrophages","Pericytes",
+                                              "Glutaminergic neurons", "GABAergic neurons", "Cajal-Retzius cells", "Choroid plexus cells","Ependymal cells",
                                               "Myeloid−derived suppressor cells", "Oligodendrocyte progenitor cells", "Immature nerons", "GABAergic neurons")) {
   
 cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE)
