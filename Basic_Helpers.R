@@ -1,3 +1,4 @@
+## Convert string to mouse naming scheme with Capital first letter only
 simpleCap <- function(x) {
   s <- strsplit(x, " ")[[1]]
   paste(toupper(substring(s, 1,1)), substring(s, 2),
@@ -33,7 +34,7 @@ AutoCellType = function(clustmat, GO ){
 }
 
 
-ProcSeurat = function(mega, vars.to.regress=NULL, nDim = 40, nGenes = 3000 ) {
+ProcSeurat = function(mega, vars.to.regress=NULL, nDim = 20, nGenes = 2000 ) {
   
   mega <- NormalizeData(mega, normalization.method = "LogNormalize", scale.factor = 10000)
   
