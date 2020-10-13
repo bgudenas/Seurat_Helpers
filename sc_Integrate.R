@@ -5,7 +5,9 @@ sc_Integrate = function( samps, count_paths ,
                          project = "Proj",
                          QC_dir =".",
                          markers=NULL) {
-
+  ## TODO make package to avoid this
+  source("/home/bgudenas/src/Seurat_Helpers/Cell_QC_Plots.R")
+  source("/home/bgudenas/src/Seurat_Helpers/FindDoublets.R")
   library(Seurat)
   library(ggplot2)
   library(stringr)
