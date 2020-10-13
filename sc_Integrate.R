@@ -3,7 +3,8 @@ sc_Integrate = function( samps, count_paths ,
                          nDims = 20,
                          mt_filt=20,
                          project = "Proj",
-                         QC_dir =".") {
+                         QC_dir =".",
+                         markers=NULL) {
 
   library(Seurat)
   library(ggplot2)
@@ -70,7 +71,16 @@ sc_Integrate = function( samps, count_paths ,
   so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500 )
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
   so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE)
-  g1 = DimPlot(so_big, group.by = )
-  ggsave(ElbowPlot(so_big), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
-  saveRDS(so_big, out_data_path )
+  g1 = DimPlot(so_big, group.by = "Sample" )
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Samples.pdf"))
+  
+  g1 = DimPlot(so_big, label = TRUE )
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Clusters.pdf"))
+  
+  if (!is.null(markers)){
+    g1 = FeaturePlot(so_big, min.cutoff = "q10", features = markers )
+    ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Markers.pdf"))
+  }
+  
+      saveRDS(so_big, out_data_path )
 }
