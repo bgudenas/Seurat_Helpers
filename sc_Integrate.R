@@ -15,13 +15,14 @@ sc_Integrate = function( samps, count_paths ,
     
     counts <- Read10X(data.dir = count_paths[i] )
     so =  CreateSeuratObject(counts = counts, project = samps[i], min.cells = 50  )
+    so$Sample = rep(samps[i], ncol(so) )
     
     if (sum(grepl("MT-", rownames(so))) == 0 ){
       so[["percent.mt"]] <- PercentageFeatureSet(object = so, pattern = "^Mt")
     } else {
       so[["percent.mt"]] <- PercentageFeatureSet(object = so, pattern = "^MT-")
     }
-    Cell_QC_Plots(so, plotfile = file.path(QC_dir, samps[i] ))
+    Cell_QC_Plots(so, plotfile = file.path(QC_dir, paste0(samps[i],".pdf") ))
     
     # Adaptive QC thresholds --------------------------------------------------
     doublets = Find_Doublets( count_paths[i] )
@@ -62,12 +63,14 @@ sc_Integrate = function( samps, count_paths ,
   so_big$CC.Difference <- so_big$S.Score - so_big$G2M.Score
   so_big <- ScaleData(so_big, vars.to.regress = "CC.Difference" )
   
-  so_big <- FindVariableFeatures(object = so_big, nfeatures = 2000, selection.method = "vst")
-  so_big <- RunPCA(object = so_big, features = VariableFeatures(object = so_big),  verbose = FALSE)
+  so_big <- FindVariableFeatures(object = so_big, nfeatures = 3000, selection.method = "vst")
+  so_big <- RunPCA(object = so_big,  verbose = FALSE)
   ggsave(ElbowPlot(so_big), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
   
   so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500 )
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
-  so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6)
+  so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE)
+  g1 = DimPlot(so_big, group.by = )
+  ggsave(ElbowPlot(so_big), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
   saveRDS(so_big, out_data_path )
 }
