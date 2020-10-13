@@ -1,6 +1,6 @@
 # DoubletFinder wrapper-----------------------------------------------------------
 ## description: standard seurat pre-processing followed by doublet calling using DoubletFinder
-## Returns a vector of (Singlet | Doublet ) named by cell name
+## Returns a character vector of (Singlet | Doublet ) named by cell name
 
 
 Find_Doublets = function(count_path,
@@ -27,7 +27,7 @@ print(table(qc.low_lib, qc.low_genes))
 
 keep_cells = colnames(so)[!( qc.low_lib | qc.low_genes)]
 so = subset(so, cells = keep_cells  )
-so = subset(so, subset = percent.mt <= mt_filt  )
+so = subset(so, subset = percent.mt < mt_filt  )
 
 so = NormalizeData(so)
 so = FindVariableFeatures(so, selection.method = "vst", nfeatures = 2000)
