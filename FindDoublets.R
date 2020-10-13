@@ -4,7 +4,7 @@
 
 
 Find_Doublets = function(count_path,
-                    mt_filt = 10,
+                    mt_filt = 15,
                     nDims = 15 ){
 library(Seurat)
 library(DoubletFinder)

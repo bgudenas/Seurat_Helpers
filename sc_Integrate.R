@@ -1,10 +1,10 @@
 sc_Integrate = function( samps, count_paths , 
                          out_data_path,
                          nDims = 20,
+                         mt_filt=20,
                          project = "Proj",
                          QC_dir =".") {
 
-  
   library(Seurat)
   library(ggplot2)
   library(stringr)
@@ -65,7 +65,8 @@ sc_Integrate = function( samps, count_paths ,
   so_big <- FindVariableFeatures(object = so_big, nfeatures = 2000, selection.method = "vst")
   so_big <- RunPCA(object = so_big, features = VariableFeatures(object = so_big),  verbose = FALSE)
   ggsave(ElbowPlot(so_big), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
-  so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims)
+  
+  so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500 )
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
   so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6)
   saveRDS(so_big, out_data_path )
