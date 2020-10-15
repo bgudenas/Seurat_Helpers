@@ -89,6 +89,9 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500 )
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
   so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE)
+  
+  Prob_Clusts(so_big, QC_dir) ## plots clusters driven by single samples
+  
   g1 = DimPlot(so_big, group.by = "Sample" ) + ggtitle(paste0("Samples= ",length(unique(so_big$Sample)) ))
   ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Samples.pdf"))
   
@@ -112,3 +115,24 @@ quiet <- function(x) {
   on.exit(sink()) 
   invisible(force(x)) 
 } 
+
+
+
+
+
+
+Prob_Clusts = function(so_big, QC_dir) {
+  library(dplyr)
+  library(ggplot2)
+  samp_clusts = data.frame( table(so_big$seurat_clusters, so_big$Sample))
+  rela = samp_clusts %>% group_by(Var1) %>% mutate("Rel" = Freq/sum(Freq))
+  prob_clusts = rela$Var1[rela$Rel > 0.7 ]
+  
+  samp_clusts = samp_clusts[samp_clusts$Var1 %in% prob_clusts, ]
+  
+  g1 = ggplot(samp_clusts, aes(x = Var1 , y = Freq, fill = Var2 )) +
+    geom_bar(stat = "identity", position = "fill" ) + 
+    theme_bw() +
+    ggtitle("Problematic Clusters ( >70% of cluster from single sample)")
+  ggsave(last_plot(),device = "pdf", filename = file.path(QC_dir, "Problematic_Clusters.pdf"))
+}
