@@ -1,7 +1,7 @@
 sc_Integrate = function( samps, ## sample names equal in length to count_paths
                          count_paths , ## paths to cellranger dirs
                          out_data_path, ## out name for RDS file
-                         nDims = 20, ## PCA dims
+                         nDims = 30, ## PCA dims
                          mt_filt=20, ## percent mitochondria filter
                          rem_Xist = FALSE, ## remove Xist from HVG
                          drop_cells = NULL, ## cell names to remove before processing
@@ -31,7 +31,8 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     } else {
       so[["percent.mt"]] <- PercentageFeatureSet(object = so, pattern = "^MT-")
     }
-    Cell_QC_Plots(so, plotfile = file.path(QC_dir, paste0(samps[i],".pdf") ))
+    dir.create("Sample_QC")
+    Cell_QC_Plots(so, plotfile = file.path("Sample_QC", paste0(samps[i],".pdf") ))
     
     # Adaptive QC thresholds --------------------------------------------------
     doublets = quiet(Find_Doublets( count_paths[i] ))
@@ -88,22 +89,25 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   
   so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500 )
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
-  so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE)
+  so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE) ## decrease resolution for broader clusters
   
   Prob_Clusts(so_big, QC_dir) ## plots clusters driven by single samples
   
   g1 = DimPlot(so_big, group.by = "Sample" ) + ggtitle(paste0("Samples= ",length(unique(so_big$Sample)) ))
-  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Samples.pdf"))
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Samples.pdf"))
+  so_big$Log_nCount = log( so_big$nCount_RNA )
+  g1 = FeaturePlot(so_big, features = c("Log_nCount", "percent.mt") ) + ggtitle(paste0("Cells = ", nCells ))
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_QC_metrics.pdf"))
   
-  g1 = FeaturePlot(so_big, features = c("nCount_RNA", "percent.mt") ) + ggtitle(paste0("Cells = ", nCells ))
-  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_QC_metrics.pdf"))
+  g1 = DimPlot(so_big, group.by = "Phase" ) + ggtitle(paste0("Cells = ", nCells ))
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Phase.pdf"))
   
   g1 = DimPlot(so_big, label = TRUE ) + ggtitle(paste0("Cells = ", nCells ))
-  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Clusters.pdf"))
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Clusters.pdf"))
   
   if (!is.null(markers)){
     g1 = FeaturePlot(so_big, min.cutoff = "q10", features = markers )
-    ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Markers.pdf"))
+    ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Markers.pdf"))
   }
   
       saveRDS(so_big, out_data_path )
@@ -135,4 +139,22 @@ Prob_Clusts = function(so_big, QC_dir) {
     theme_bw() +
     ggtitle("Problematic Clusters ( >70% of cluster from single sample)")
   ggsave(last_plot(),device = "pdf", filename = file.path(QC_dir, "Problematic_Clusters.pdf"))
+}
+
+
+
+
+CellType_Transfer = function(ref_so, query_so) {
+  
+  #CB = readRDS("/home/bgudenas/Proj/Gender/CB_atlas_seurat.rds")
+  ref_so <- FindVariableFeatures(object = ref_so, nfeatures = 2000 )
+  
+  g.anchors <- FindTransferAnchors(reference = ref_so, query = query_so , 
+                                   dims = 1:30)
+  
+  predictions <- TransferData(anchorset = g.anchors, refdata = ref_so$cell_type, 
+                              dims = 1:30)
+  
+  ref_so <- AddMetaData(object = ref_so, metadata = predictions)
+  
 }
