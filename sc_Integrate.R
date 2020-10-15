@@ -66,7 +66,8 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     print(paste0("Removing drop cells", length(drop_cells)))
     so_big = subset(so, cells = keep_cells  ) 
   }
-  print(paste("Total cells =", ncol(so_big)))
+  nCells = ncol(so_big)
+  print(paste("Total cells =", nCells ))
   print(paste("Total genes =", nrow(so_big)))
   
   so_big <- NormalizeData(so_big, normalization.method = "LogNormalize", scale.factor = 10000)
@@ -83,18 +84,18 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   HVG = VariableFeatures(object = so_big)
   if (rem_Xist == TRUE) { HVG = HVG[ HVG != "Xist" ]}
   so_big <- RunPCA(object = so_big,  verbose = FALSE, features = HVG)
-  ggsave(ElbowPlot(so_big), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
+  ggsave(ElbowPlot(so_big, ndims = 50), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
   
   so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500 )
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
   so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE)
-  g1 = DimPlot(so_big, group.by = "Sample" )
+  g1 = DimPlot(so_big, group.by = "Sample" ) + ggtitle(paste0("Samples= ",length(unique(so_big$Sample)) ))
   ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Samples.pdf"))
   
-  g1 = FeaturePlot(so_big, features = c("nCount_RNA", "percent.mt") )
+  g1 = FeaturePlot(so_big, features = c("nCount_RNA", "percent.mt") ) + ggtitle(paste0("Cells = ", nCells ))
   ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_QC_metrics.pdf"))
   
-  g1 = DimPlot(so_big, label = TRUE )
+  g1 = DimPlot(so_big, label = TRUE ) + ggtitle(paste0("Cells = ", nCells ))
   ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Clusters.pdf"))
   
   if (!is.null(markers)){
