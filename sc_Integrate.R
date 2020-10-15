@@ -1,10 +1,15 @@
-sc_Integrate = function( samps, count_paths , 
-                         out_data_path,
-                         nDims = 20,
-                         mt_filt=20,
+sc_Integrate = function( samps, ## sample names equal in length to count_paths
+                         count_paths , ## paths to cellranger dirs
+                         out_data_path, ## out name for RDS file
+                         nDims = 20, ## PCA dims
+                         mt_filt=20, ## percent mitochondria filter
+                         rem_Xist = FALSE, ## remove Xist from HVG
+                         drop_cells = NULL, ## cell names to remove before processing
+                         normData = NULL, ## seurat object which bypasses integration IE just want to test drop_cells, PCA/Cluster params
+                         markers=NULL, ## gene markers to plot
                          project = "Proj",
-                         QC_dir =".",
-                         markers=NULL) {
+                         QC_dir ="." ## where to put QC plots
+                         ) {
   ## TODO make package to avoid this
   source("/home/bgudenas/src/Seurat_Helpers/Cell_QC_Plots.R")
   source("/home/bgudenas/src/Seurat_Helpers/FindDoublets.R")
@@ -12,6 +17,7 @@ sc_Integrate = function( samps, count_paths ,
   library(ggplot2)
   library(stringr)
   
+  if ( is.null(normData)){
   print(paste("Samples = ", length(samps) ))
   so_list = vector( length = length(samps), mode = "list")
   for ( i in 1:length(samps)) {
@@ -28,7 +34,7 @@ sc_Integrate = function( samps, count_paths ,
     Cell_QC_Plots(so, plotfile = file.path(QC_dir, paste0(samps[i],".pdf") ))
     
     # Adaptive QC thresholds --------------------------------------------------
-    doublets = Find_Doublets( count_paths[i] )
+    doublets = quiet(Find_Doublets( count_paths[i] ))
     singlet_names = names(doublets)[doublets == "Singlet" ]
     print(paste0("Doublet_Filter=", sum(doublets == "Doublet")))
     
@@ -53,6 +59,13 @@ sc_Integrate = function( samps, count_paths ,
   table(so_big$orig.ident)
   
   so_big <- subset(x = so_big, subset = percent.mt < mt_filt )
+  } else { so_big = readRDS( normData )}
+  
+  if ( !is.null( drop_cells )){
+    keep_cells = colnames(so_big)[!(colnames(so_big) %in% drop_cells )]
+    print(paste0("Removing drop cells", length(drop_cells)))
+    so_big = subset(so, cells = keep_cells  ) 
+  }
   print(paste("Total cells =", ncol(so_big)))
   print(paste("Total genes =", nrow(so_big)))
   
@@ -64,10 +77,12 @@ sc_Integrate = function( samps, count_paths ,
   
   so_big <- CellCycleScoring(so_big, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE)
   so_big$CC.Difference <- so_big$S.Score - so_big$G2M.Score
-  so_big <- ScaleData(so_big, vars.to.regress = "CC.Difference" )
+  so_big <- quiet( ScaleData(so_big, vars.to.regress = "CC.Difference" ) )
   
-  so_big <- FindVariableFeatures(object = so_big, nfeatures = 3000, selection.method = "vst")
-  so_big <- RunPCA(object = so_big,  verbose = FALSE)
+  so_big <- FindVariableFeatures(object = so_big, nfeatures = 2000, selection.method = "vst")
+  HVG = VariableFeatures(object = so_big)
+  if (rem_Xist == TRUE) { HVG = HVG[ HVG != "Xist" ]}
+  so_big <- RunPCA(object = so_big,  verbose = FALSE, features = HVG)
   ggsave(ElbowPlot(so_big), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
   
   so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500 )
@@ -75,6 +90,9 @@ sc_Integrate = function( samps, count_paths ,
   so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE)
   g1 = DimPlot(so_big, group.by = "Sample" )
   ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Samples.pdf"))
+  
+  g1 = FeaturePlot(so_big, features = c("nCount_RNA", "percent.mt") )
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_QC_metrics.pdf"))
   
   g1 = DimPlot(so_big, label = TRUE )
   ggsave(g1, device = "pdf", filename = file.path(QC_dir, "Integrated_UMAP_Clusters.pdf"))
@@ -86,3 +104,10 @@ sc_Integrate = function( samps, count_paths ,
   
       saveRDS(so_big, out_data_path )
 }
+
+
+quiet <- function(x) { 
+  sink(tempfile()) 
+  on.exit(sink()) 
+  invisible(force(x)) 
+} 
