@@ -65,7 +65,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   if ( !is.null( drop_cells )){
     keep_cells = colnames(so_big)[!(colnames(so_big) %in% drop_cells )]
     print(paste0("Removing drop cells", length(drop_cells)))
-    so_big = subset(so, cells = keep_cells  ) 
+    so_big = subset(so_big, cells = keep_cells  ) 
   }
   nCells = ncol(so_big)
   print(paste("Total cells =", nCells ))
