@@ -61,6 +61,9 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   Joined_QC(so_big, QC_dir, "Joined_QC.pdf")
   
   so_big <- subset(x = so_big, subset = percent.mt < mt_filt )
+  ## Joint low count filter
+  keep_cells = names(so_big$orig.ident)[! scater::isOutlier(so_big$nCount_RNA, log = TRUE,  type="lower") ]
+  so_big = subset(so_big, cells = keep_cells  ) 
   } else { so_big = readRDS( normData )}
   
   if ( !is.null( drop_cells )){
@@ -68,11 +71,8 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     print(paste0("Removing drop cells", length(drop_cells)))
     so_big = subset(so_big, cells = keep_cells  ) 
   }
-  ## Joint low count filter
-  keep_cells = names(so_big$orig.ident)[! scater::isOutlier(so_big$nCount_RNA, log = TRUE,  type="lower") ]
-  Joined_QC(so_big, QC_dir, "Joined_Post_filt_QC.pdf")
-  so_big = subset(so_big, cells = keep_cells  ) 
   
+  Joined_QC(so_big, QC_dir, "Joined_Post_filt_QC.pdf")
   nCells = ncol(so_big)
   print(paste("Total cells =", nCells ))
   print(paste("Total genes =", nrow(so_big)))
