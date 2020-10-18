@@ -69,7 +69,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     so_big = subset(so_big, cells = keep_cells  ) 
   }
   ## Joint low count filter
-  keeps = names(mega$orig.ident)[! scater::isOutlier(mega$nCount_RNA, log = TRUE,  type="lower") ]
+  keep_cells = names(so_big$orig.ident)[! scater::isOutlier(so_big$nCount_RNA, log = TRUE,  type="lower") ]
   Joined_QC(so_big, QC_dir, "Joined_Post_filt_QC.pdf")
   so_big = subset(so_big, cells = keep_cells  ) 
   
