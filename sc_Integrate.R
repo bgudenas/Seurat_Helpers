@@ -26,7 +26,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     so =  CreateSeuratObject(counts = counts, project = samps[i], min.cells = 50  )
     so$Sample = rep(samps[i], ncol(so) )
     
-    if (sum(grepl("MT-", rownames(so))) == 0 ){
+    if (sum(grepl("MT-", rownames(so))) == 0 ){ ## check if Mt genes are mouse or human
       so[["percent.mt"]] <- PercentageFeatureSet(object = so, pattern = "^Mt")
     } else {
       so[["percent.mt"]] <- PercentageFeatureSet(object = so, pattern = "^MT-")
@@ -58,6 +58,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   so_big <- merge(so_list[[1]], y = so_list[-1], add.cell.ids = samps, project = project )
   rm(so_list, counts)
   table(so_big$orig.ident)
+  Joined_QC(so_big, QC_dir, "Joined_QC.pdf")
   
   so_big <- subset(x = so_big, subset = percent.mt < mt_filt )
   } else { so_big = readRDS( normData )}
@@ -67,6 +68,11 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     print(paste0("Removing drop cells", length(drop_cells)))
     so_big = subset(so_big, cells = keep_cells  ) 
   }
+  ## Joint low count filter
+  keeps = names(mega$orig.ident)[! scater::isOutlier(mega$nCount_RNA, log = TRUE,  type="lower") ]
+  Joined_QC(so_big, QC_dir, "Joined_Post_filt_QC.pdf")
+  so_big = subset(so_big, cells = keep_cells  ) 
+  
   nCells = ncol(so_big)
   print(paste("Total cells =", nCells ))
   print(paste("Total genes =", nrow(so_big)))
