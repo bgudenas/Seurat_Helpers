@@ -2,8 +2,9 @@
 # QC_Plots
 
 Cell_QC_Plots = function( so, plotfile = NULL){
+## plots distributions of single cell counts, number of genes and percent mitochondria
 library(Seurat)
-  library(ggplot2)
+library(ggplot2)
 pdf(plotfile)
 par(mfrow=c(2,2))
 
