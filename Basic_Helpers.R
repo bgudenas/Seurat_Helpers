@@ -43,8 +43,9 @@ PlotSeurat = function(plot, name, path ){
 
 
 AutoCellType = function(clustmat, GO ){
+  ## GO is a list of lists (celltypes and their marker genes)
   
-  resSS = GSVA::gsva(as.matrix(clustmat), GO, method="ssgsea", ssgsea.norm = TRUE, min.sz= 3, verbose = FALSE )
+  resSS = GSVA::gsva(as.matrix(clustmat), GO, method="ssgsea", ssgsea.norm = FALSE, min.sz= 3, verbose = FALSE )
   df = as.data.frame(matrix(nrow= ncol(clustmat), ncol = 3 ) )
   colnames(df) = c("Cluster", "SSGSEA","Score" )
   rownames(df) = colnames(clustmat)

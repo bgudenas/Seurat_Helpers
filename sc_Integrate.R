@@ -1,3 +1,7 @@
+## Description: loop through samples and remove cells with low counts/genes and doublets within each sample. 
+## Then integrate all samples and do standard seurat pre-processing. Plot standard QC's along the way.
+
+
 sc_Integrate = function( samps, ## sample names equal in length to count_paths
                          count_paths , ## paths to cellranger dirs
                          out_data_path, ## out name for RDS file
