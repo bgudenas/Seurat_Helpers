@@ -1,13 +1,41 @@
-## Convert string to mouse naming scheme with Capital first letter only
-simpleCap <- function(x) {
-  s <- strsplit(x, " ")[[1]]
-  paste(toupper(substring(s, 1,1)), substring(s, 2),
-        sep="", collapse=" ") }
+
+
+Prob_Clusts = function(so_big, QC_dir, percent_threshold ) {
+  ## Find and plot problematic clusters driven primarily by a single sample
+  library(dplyr)
+  library(ggplot2)
+  samp_clusts = data.frame( table(so_big$seurat_clusters, so_big$Sample))
+  rela = samp_clusts %>% group_by(Var1) %>% mutate("Rel" = Freq/sum(Freq))
+  prob_clusts = rela$Var1[rela$Rel > percent_threshold ]
+  
+  samp_clusts = samp_clusts[samp_clusts$Var1 %in% prob_clusts, ]
+  
+  g1 = ggplot(samp_clusts, aes(x = Var1 , y = Freq, fill = Var2 )) +
+    geom_bar(stat = "identity", position = "fill" ) + 
+    theme_bw() +
+    ggtitle("Problematic Clusters ( >70% of cluster from single sample)")
+  ggsave(last_plot(),device = "pdf", filename = file.path(QC_dir, "Problematic_Clusters.pdf"))
+}
+
+
+
+
+CellType_Transfer = function(ref_so, query_so) {
+  ## transfer cell type labels from one seurat dataset to another
+
+  ref_so <- FindVariableFeatures(object = ref_so, nfeatures = 2000 )
+  g.anchors <- FindTransferAnchors(reference = ref_so, query = query_so , 
+                                   dims = 1:30)
+  predictions <- TransferData(anchorset = g.anchors, refdata = ref_so$cell_type, 
+                              dims = 1:30)
+  ref_so <- AddMetaData(object = ref_so, metadata = predictions)
+  
+}
 
 
 PlotSeurat = function(plot, name, path ){
   p1 = p1 + ggtitle(name)
-  #p1 = AugmentPlot(plot = p1)
+  p1 = AugmentPlot(plot = p1)
   ggsave(p1, device = "pdf", filename = paste0(path, name, ".pdf"), height = 12, width = 10, useDingbats = FALSE)
   
 }
