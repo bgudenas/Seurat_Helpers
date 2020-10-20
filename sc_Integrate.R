@@ -7,6 +7,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
                          out_data_path, ## out name for RDS file
                          nDims = 30, ## PCA dims
                          mt_filt=20, ## percent mitochondria filter
+                         min_genes = 400,
                          rem_Xist = FALSE, ## remove Xist from HVG
                          drop_cells = NULL, ## cell names to remove before processing
                          normData = NULL, ## seurat object which bypasses integration IE just want to test drop_cells, PCA/Cluster params
@@ -21,13 +22,16 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   library(ggplot2)
   library(stringr)
   
+  stopifnot(length(samps) == length(count_paths))
   if ( is.null(normData)){
+
+# Loop through each sample and apply adaptive thresholds ------------------
   print(paste("Samples = ", length(samps) ))
   so_list = vector( length = length(samps), mode = "list")
   for ( i in 1:length(samps)) {
     
     counts <- Read10X(data.dir = count_paths[i] )
-    so =  CreateSeuratObject(counts = counts, project = samps[i], min.cells = 50  )
+    so =  CreateSeuratObject(counts = counts, project = samps[i], min.cells = 20, min.features = min_genes)
     so$Sample = rep(samps[i], ncol(so) )
     
     if (sum(grepl("MT-", rownames(so))) == 0 ){ ## check if Mt genes are mouse or human
@@ -67,7 +71,13 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   so_big <- subset(x = so_big, subset = percent.mt < mt_filt )
   ## Joint low count filter
   keep_cells = names(so_big$orig.ident)[! scater::isOutlier(so_big$nCount_RNA, log = TRUE,  type="lower") ]
+  ## Joint High count filter
+  keep_cells = c(keep_cells,
+                 names(so_big$orig.ident)[! scater::isOutlier(so_big$nCount_RNA,  type="higher") ]
+  )
+  keep_cells = keep_cells[duplicated(keep_cells)] ## cells passing both filters will be duplicated in vector
   so_big = subset(so_big, cells = keep_cells  ) 
+  
   } else { so_big = readRDS( normData )}
   
   if ( !is.null( drop_cells )){
@@ -80,6 +90,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   nCells = ncol(so_big)
   print(paste("Total cells =", nCells ))
   print(paste("Total genes =", nrow(so_big)))
+  print(as.data.frame(table(mega$Sample)))
   
   so_big <- NormalizeData(so_big, normalization.method = "LogNormalize", scale.factor = 10000)
   if (sum(cc.genes$s.genes %in% rownames(so_big)) == 0 ){
