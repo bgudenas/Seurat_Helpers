@@ -28,7 +28,7 @@ CellType_Transfer = function(ref_so, query_so) {
                                    dims = 1:30)
   predictions <- TransferData(anchorset = g.anchors, refdata = ref_so$cell_type, 
                               dims = 1:30)
-  ref_so <- AddMetaData(object = ref_so, metadata = predictions)
+  ref_so <- AddMetaData(object = query_so, metadata = predictions)
   
 }
 
