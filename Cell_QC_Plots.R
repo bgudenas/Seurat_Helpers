@@ -35,8 +35,8 @@ dev.off()
 
 
 
-library(dplyr)
-library(ggplot2)
+# library(dplyr)
+# library(ggplot2)
 
 Joined_QC = function(mega, QC_dir, plot_name) {
   ## Plots QC metrics across samples to find problematic samples
