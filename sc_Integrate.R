@@ -90,7 +90,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   nCells = ncol(so_big)
   print(paste("Total cells =", nCells ))
   print(paste("Total genes =", nrow(so_big)))
-  print(as.data.frame(table(mega$Sample)))
+  print(as.data.frame(table(so_big$Sample)))
   
   so_big <- NormalizeData(so_big, normalization.method = "LogNormalize", scale.factor = 10000)
   if (sum(cc.genes$s.genes %in% rownames(so_big)) == 0 ){
