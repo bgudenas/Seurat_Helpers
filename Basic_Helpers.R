@@ -1,25 +1,5 @@
 
 
-Prob_Clusts = function(so_big, QC_dir, percent_threshold ) {
-  ## Find and plot problematic clusters driven primarily by a single sample
-  library(dplyr)
-  library(ggplot2)
-  samp_clusts = data.frame( table(so_big$seurat_clusters, so_big$Sample))
-  rela = samp_clusts %>% group_by(Var1) %>% mutate("Rel" = Freq/sum(Freq))
-  prob_clusts = rela$Var1[rela$Rel > percent_threshold ]
-  
-  samp_clusts = samp_clusts[samp_clusts$Var1 %in% prob_clusts, ]
-  
-  g1 = ggplot(samp_clusts, aes(x = Var1 , y = Freq, fill = Var2 )) +
-    geom_bar(stat = "identity", position = "fill" ) + 
-    theme_bw() +
-    ggtitle("Problematic Clusters ( >70% of cluster from single sample)")
-  ggsave(last_plot(),device = "pdf", filename = file.path(QC_dir, "Problematic_Clusters.pdf"))
-}
-
-
-
-
 CellType_Transfer = function(ref_so, query_so) {
   ## transfer cell type labels from one seurat dataset to another
 
