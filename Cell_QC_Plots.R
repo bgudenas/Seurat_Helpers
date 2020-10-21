@@ -71,7 +71,7 @@ Joined_QC = function(mega, QC_dir, plot_name) {
 
 
 
-Prob_Clusts = function(so_big, QC_dir, percent_threshold ) {
+Prob_Clusts = function(so_big, QC_dir, percent_threshold = 0.7 ) {
   ## Find and plot problematic clusters driven primarily by a single sample
   library(dplyr)
   library(ggplot2)
