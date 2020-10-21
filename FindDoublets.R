@@ -8,7 +8,7 @@ Find_Doublets = function(count_path,
                     nDims = 15 ){
 library(Seurat)
 library(DoubletFinder)
-  
+  sink(tempfile()) 
 gene_counts = Read10X(count_path )
 so = CreateSeuratObject(gene_counts, min.cells = 50)
 
@@ -36,7 +36,7 @@ so = ScaleData(so)
 so = RunPCA(so)
 so = RunUMAP(so, dims = 1:nDims)
 so = FindNeighbors(object = so, reduction = "pca", dims = 1:nDims)
-so = FindClusters(so, n.start =  100 , resolution = 0.5 )
+so = FindClusters(so, n.start =  100 , resolution = 0.5)
 
 ## DoubletFinder
 sweep.res.list_so = paramSweep_v3(so, PCs = 1:nDims, sct = FALSE)
@@ -56,6 +56,7 @@ DF_col =  which(grepl("DF.classifications", colnames(so@meta.data) ))
 dub_calls = so@meta.data[ ,DF_col]
 names(dub_calls) = colnames(so)
 
+sink()
 return(dub_calls)
 
 
