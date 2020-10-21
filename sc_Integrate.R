@@ -97,10 +97,11 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     cc.genes.updated.2019$s.genes = stringr::str_to_title(cc.genes.updated.2019$s.genes)
     cc.genes.updated.2019$g2m.genes = stringr::str_to_title(cc.genes.updated.2019$g2m.genes)
   }
-  
+  if ( CC == TRUE ){
   so_big <- CellCycleScoring(so_big, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE)
   so_big$CC.Difference <- so_big$S.Score - so_big$G2M.Score
   so_big <- quiet( ScaleData(so_big, vars.to.regress = "CC.Difference" ) )
+  } else { so_big <- quiet( ScaleData(so_big  ) )  }
   
   so_big <- FindVariableFeatures(object = so_big, nfeatures = 2000, selection.method = "vst")
   HVG = VariableFeatures(object = so_big)
