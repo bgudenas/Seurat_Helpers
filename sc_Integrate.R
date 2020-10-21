@@ -8,6 +8,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
                          nDims = 30, ## PCA dims
                          mt_filt=20, ## percent mitochondria filter
                          min_genes = 400,
+                         CC = FALSE,
                          rem_Xist = FALSE, ## remove Xist from HVG
                          drop_cells = NULL, ## cell names to remove before processing
                          normData = NULL, ## seurat object which bypasses integration IE just want to test drop_cells, PCA/Cluster params
