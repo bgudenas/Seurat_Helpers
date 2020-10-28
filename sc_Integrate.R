@@ -8,7 +8,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
                          nDims = 30, ## PCA dims
                          mt_filt=20, ## percent mitochondria filter
                          min_genes = 400,
-                         CC = FALSE,
+                         CC = TRUE,
                          rem_Xist = FALSE, ## remove Xist from HVG
                          drop_cells = NULL, ## cell names to remove before processing
                          normData = NULL, ## seurat object which bypasses integration IE just want to test drop_cells, PCA/Cluster params
@@ -114,6 +114,8 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
   so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE) ## decrease resolution for broader clusters
   
+  saveRDS(so_big, out_data_path )
+  
   Prob_Clusts(so_big, QC_dir) ## plots clusters driven by single samples
   
   g1 = DimPlot(so_big, group.by = "Sample" ) + ggtitle(paste0("Samples= ",length(unique(so_big$Sample)) ))
@@ -132,8 +134,6 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     g1 = FeaturePlot(so_big, min.cutoff = "q10", features = markers )
     ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Markers.pdf"))
   }
-  
-      saveRDS(so_big, out_data_path )
 }
 
 
