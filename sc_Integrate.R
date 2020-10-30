@@ -12,6 +12,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
                          rem_Xist = FALSE, ## remove Xist from HVG
                          drop_cells = NULL, ## cell names to remove before processing
                          normData = NULL, ## seurat object which bypasses integration IE just want to test drop_cells, PCA/Cluster params
+                         GO=NULL, ## GO  to do automated cell type annotation
                          markers=NULL, ## gene markers to plot
                          project = "Proj",
                          QC_dir ="." ## where to put QC plots
@@ -83,7 +84,8 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   
   if ( !is.null( drop_cells )){
     keep_cells = colnames(so_big)[!(colnames(so_big) %in% drop_cells )]
-    print(paste0("Removing drop cells", length(drop_cells)))
+    num_drops = ncol(so_big) - length(keep_cells)
+    print(paste0("Removing drop cells", num_drops ))
     so_big = subset(so_big, cells = keep_cells  ) 
   }
   
