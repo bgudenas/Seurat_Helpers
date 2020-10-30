@@ -116,6 +116,9 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
   so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE) ## decrease resolution for broader clusters
   
+  if (!is.null(GO)){
+  AutoCellType(so_big, GO, QC_dir )
+  }
   saveRDS(so_big, out_data_path )
   
   Prob_Clusts(so_big, QC_dir) ## plots clusters driven by single samples
@@ -136,6 +139,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     g1 = FeaturePlot(so_big, min.cutoff = "q10", features = markers )
     ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Markers.pdf"))
   }
+    
 }
 
 
