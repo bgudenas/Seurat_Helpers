@@ -110,13 +110,13 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   HVG = VariableFeatures(object = so_big)
   if (rem_Xist == TRUE) { HVG = HVG[ HVG != "Xist" ]}
   so_big <- RunPCA(object = so_big,  verbose = FALSE, features = HVG)
-  ggsave(ElbowPlot(so_big, ndims = 50), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
   
   so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500 )
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
   so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE) ## decrease resolution for broader clusters
   
   saveRDS(so_big, out_data_path )
+  ggsave(ElbowPlot(so_big, ndims = 50), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
   
   if (!is.null(GO)){
   AutoCellType(so_big, GO, QC_dir )
