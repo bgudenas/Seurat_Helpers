@@ -125,20 +125,20 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   Prob_Clusts(so_big, QC_dir) ## plots clusters driven by single samples
   
   g1 = DimPlot(so_big, group.by = "Sample" ) + ggtitle(paste0("Samples= ",length(unique(so_big$Sample)) ))
-  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Samples.pdf"))
+  ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_Samples.png"),dpi=120, width = 10, height = 10)
   so_big$Log_nCount = log( so_big$nCount_RNA )
   g1 = FeaturePlot(so_big, features = c("Log_nCount", "percent.mt") ) + ggtitle(paste0("Cells = ", nCells ))
-  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_QC_metrics.pdf"))
+  ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_QC_metrics.png"), dpi=120, width = 10, height = 10)
   
   g1 = DimPlot(so_big, group.by = "Phase" ) + ggtitle(paste0("Cells = ", nCells ))
-  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Phase.pdf"))
+  ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_Phase.png"),  dpi=120, width = 10, height = 10)
   
   g1 = DimPlot(so_big, label = TRUE ) + ggtitle(paste0("Cells = ", nCells ))
-  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Clusters.pdf"))
+  ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_Clusters.png"),  dpi=120, width = 10, height = 10)
   
   if (!is.null(markers)){
     g1 = FeaturePlot(so_big, min.cutoff = "q10", features = markers )
-    ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Markers.pdf"))
+    ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_Markers.png"),  dpi=120, width = 10, height = 10)
   }
     
 }
