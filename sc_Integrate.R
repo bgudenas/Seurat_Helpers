@@ -45,7 +45,12 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     Cell_QC_Plots(so, plotfile = file.path("Sample_QC", paste0(samps[i],".pdf") ))
     
     # Adaptive QC thresholds --------------------------------------------------
+    doublets_file = file.path(".", "Sample_QC", paste0(samps[i], "_Doublets.rds"))
+    if ( !file.exists( doublets_file )){
     doublets = quiet(Find_Doublets( count_paths[i] ))
+    saveRDS(doublets, doublets_file )
+    } else { doublets = readRDS( doublets_file )}
+    
     singlet_names = names(doublets)[doublets == "Singlet" ]
     print(paste0("Doublet_Filter=", sum(doublets == "Doublet")))
     
