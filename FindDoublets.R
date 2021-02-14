@@ -46,7 +46,7 @@ bcmvn_so = find.pK(sweep.stats_so)
 pK =  as.numeric(as.character(bcmvn_so$pK[which.max(bcmvn_so$BCmetric)]))
 
 homotypic.prop = modelHomotypic(so$seurat_clusters)          
-dub_rate = ncol(so)/1000 * 0.8 ## 0.8% doublets per 1k cells
+dub_rate = (ncol(so)/1000) * 0.8 ## 0.8% doublets per 1k cells
 nExp_poi = round(0.04*nrow(so@meta.data))  
 nExp_poi.adj = round(nExp_poi*(1-homotypic.prop))
 
