@@ -8,6 +8,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
                          nDims = 30, ## PCA dims
                          mt_filt=20, ## percent mitochondria filter
                          min_genes = 400,
+                         min_counts = NULL,
                          CC = TRUE,
                          Joint_Filt = TRUE, ## Applys low & high count filter to integrated object
                          rem_Xist = FALSE, ## remove Xist from HVG
@@ -92,6 +93,11 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   )
   keep_cells = keep_cells[duplicated(keep_cells)] ## cells passing both filters will be duplicated in vector
   so_big = subset(so_big, cells = keep_cells  ) 
+  }
+  if ( !is.null(min_counts)){
+    keep_cells = colnames(so_big)[so_big$nCount_RNA > min_counts ]
+    print(paste0("LOW Counts removing = ", ncol(so_big) - length(keep_cells) ))
+    so_big = subset(so_big, cells = keep_cells  ) 
   }
   
   } else { so_big = readRDS( normData )}
