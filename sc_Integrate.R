@@ -9,6 +9,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
                          mt_filt=20, ## percent mitochondria filter
                          min_genes = 400,
                          CC = TRUE,
+                         Joint_Filt = TRUE, ## Applys low & high count filter to integrated object
                          rem_Xist = FALSE, ## remove Xist from HVG
                          drop_cells = NULL, ## cell names to remove before processing
                          normData = NULL, ## seurat object which bypasses integration IE just want to test drop_cells, PCA/Cluster params
@@ -53,17 +54,22 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     
     singlet_names = names(doublets)[doublets == "Singlet" ]
     print(paste0("Doublet_Filter=", sum(doublets == "Doublet")))
+    dub_filt = ( doublets == "Singlet" )
     
-    qc.low_lib = scater::isOutlier(so$nCount_RNA, log = TRUE,  type="lower")
+    ## Apply addaptive QC filters on cells after doublet removal
+    qc.low_lib = scater::isOutlier(so$nCount_RNA[ dub_filt ], log = TRUE,  type="lower")
     print(paste0("Low_Count_Filter=", sum(qc.low_lib)))
     
-    qc.low_genes = scater::isOutlier(so$nFeature_RNA, log = TRUE,  type="lower")
+    qc.low_genes = scater::isOutlier(so$nFeature_RNA[ dub_filt ], log = TRUE,  type="lower")
     print(paste0("Low_Gene_Filter=", sum(qc.low_genes)))
     
+    keep_cells = colnames(so)[dub_filt]
     cell_filt = !( qc.low_lib & qc.low_genes )
-    keep_cells = unique(colnames(so)[cell_filt ] )
-    keep_cells = keep_cells[keep_cells %in% singlet_names ]
-    so = subset(so, cells = keep_cells  )
+    print(paste0("Joint Low gene and Low count =", sum(cell_filt)))
+    
+    keep_cells = keep_cells[ cell_filt ]
+
+        so = subset(so, cells = keep_cells  )
     
     so_list[[i]] = so
     print(paste(samps[i],"=", ncol(so_list[[i]])))
@@ -76,6 +82,8 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   Joined_QC(so_big, QC_dir, "Joined_QC.pdf")
   
   so_big <- subset(x = so_big, subset = percent.mt < mt_filt )
+  
+  if (Joint_Filt == TRUE ){
   ## Joint low count filter
   keep_cells = names(so_big$orig.ident)[! scater::isOutlier(so_big$nCount_RNA, log = TRUE,  type="lower") ]
   ## Joint High count filter
@@ -84,6 +92,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   )
   keep_cells = keep_cells[duplicated(keep_cells)] ## cells passing both filters will be duplicated in vector
   so_big = subset(so_big, cells = keep_cells  ) 
+  }
   
   } else { so_big = readRDS( normData )}
   
