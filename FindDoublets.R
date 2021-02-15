@@ -10,7 +10,7 @@ library(Seurat)
 library(DoubletFinder)
   sink(tempfile()) 
 gene_counts = Read10X(count_path )
-so = CreateSeuratObject(gene_counts, min.cells = 50)
+so = CreateSeuratObject(gene_counts, min.cells = 20)
 
 ## check if mouse cells
 if (sum(grepl("MT-", rownames(so))) == 0 ){
@@ -36,7 +36,7 @@ so = ScaleData(so)
 so = RunPCA(so)
 so = RunUMAP(so, dims = 1:nDims)
 so = FindNeighbors(object = so, reduction = "pca", dims = 1:nDims)
-so = FindClusters(so, n.start =  100 , resolution = 0.5)
+so = FindClusters(so, n.start =  100 , resolution = 0.6)
 
 ## DoubletFinder
 sweep.res.list_so = paramSweep_v3(so, PCs = 1:nDims, sct = FALSE)
@@ -46,7 +46,7 @@ bcmvn_so = find.pK(sweep.stats_so)
 pK =  as.numeric(as.character(bcmvn_so$pK[which.max(bcmvn_so$BCmetric)]))
 
 homotypic.prop = modelHomotypic(so$seurat_clusters)          
-nExp_poi = round(0.04 * nrow(so@meta.data))  ## 5% doublet rate
+nExp_poi = round(0.04 * nrow(so@meta.data))  ## 4% doublet rate
 nExp_poi.adj = round(nExp_poi*(1-homotypic.prop))
 
 so = doubletFinder_v3(so, PCs = 1:nDims, pN = 0.25, pK = pK, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
