@@ -67,7 +67,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     
     keep_cells = colnames(so)[dub_filt]
     cell_filt = !( qc.low_lib & qc.low_genes )
-    print(paste0("Joint Low gene and Low count =", sum(cell_filt)))
+    print(paste0("Joint Low gene and Low count =", sum(!(cell_filt))))
     
     keep_cells = keep_cells[ cell_filt ]
 
@@ -132,8 +132,9 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     cc.genes.updated.2019$s.genes = stringr::str_to_title(cc.genes.updated.2019$s.genes)
     cc.genes.updated.2019$g2m.genes = stringr::str_to_title(cc.genes.updated.2019$g2m.genes)
   }
-  if ( CC == TRUE ){
+  
   so_big <- CellCycleScoring(so_big, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE)
+  if ( CC == TRUE ){
   so_big$CC.Difference <- so_big$S.Score - so_big$G2M.Score
   so_big <- quiet( ScaleData(so_big, vars.to.regress = "CC.Difference" ) )
   } else { so_big <- quiet( ScaleData(so_big  ) )  }
