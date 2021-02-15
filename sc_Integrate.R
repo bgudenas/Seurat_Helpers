@@ -7,8 +7,9 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
                          out_data_path, ## out name for RDS file
                          nDims = 30, ## PCA dims
                          mt_filt=20, ## percent mitochondria filter
-                         min_genes = 400,
+                         min_genes = NULL,
                          min_counts = NULL,
+                         max_counts = NULL,
                          CC = TRUE,
                          Joint_Filt = TRUE, ## Applys low & high count filter to integrated object
                          rem_Xist = FALSE, ## remove Xist from HVG
@@ -35,7 +36,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   for ( i in 1:length(samps)) {
     
     counts <- Read10X(data.dir = count_paths[i] )
-    so =  CreateSeuratObject(counts = counts, project = samps[i], min.cells = 20, min.features = min_genes)
+    so =  CreateSeuratObject(counts = counts, project = samps[i], min.cells = 10 )
     so$Sample = rep(samps[i], ncol(so) )
     
     if (sum(grepl("MT-", rownames(so))) == 0 ){ ## check if Mt genes are mouse or human
@@ -97,6 +98,17 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   if ( !is.null(min_counts)){
     keep_cells = colnames(so_big)[so_big$nCount_RNA > min_counts ]
     print(paste0("LOW Counts removing = ", ncol(so_big) - length(keep_cells) ))
+    so_big = subset(so_big, cells = keep_cells  ) 
+  }
+  if ( !is.null(max_counts)){
+    keep_cells = colnames(so_big)[so_big$nCount_RNA < max_counts ]
+    print(paste0("HIGH Counts removing = ", ncol(so_big) - length(keep_cells) ))
+    so_big = subset(so_big, cells = keep_cells  ) 
+  }
+  
+  if ( !is.null(min_genes)){
+    keep_cells = colnames(so_big)[so_big$nFeature_RNA > min_genes ]
+    print(paste0("LOW genes removing = ", ncol(so_big) - length(keep_cells) ))
     so_big = subset(so_big, cells = keep_cells  ) 
   }
   
