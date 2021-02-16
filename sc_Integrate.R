@@ -36,7 +36,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   for ( i in 1:length(samps)) {
     
     counts <- Read10X(data.dir = count_paths[i] )
-    so =  CreateSeuratObject(counts = counts, project = samps[i], min.cells = 10 )
+    so =  CreateSeuratObject(counts = counts, project = samps[i], min.cells = 5, min.features = 200)
     so$Sample = rep(samps[i], ncol(so) )
     
     if (sum(grepl("MT-", rownames(so))) == 0 ){ ## check if Mt genes are mouse or human
@@ -47,10 +47,11 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     dir.create("Sample_QC")
     Cell_QC_Plots(so, plotfile = file.path("Sample_QC", paste0(samps[i],".pdf") ))
     
-    # Adaptive QC thresholds --------------------------------------------------
+    # Doublet Finder --------------------------------------------------
     doublets_file = file.path(".", "Sample_QC", paste0(samps[i], "_Doublets.rds"))
     if ( !file.exists( doublets_file )){
-    doublets = quiet(Find_Doublets( count_paths[i] ))
+    doublets = quiet(Find_Doublets( count_path = count_paths[i],
+                                    mt_filt = 10 ))
     saveRDS(doublets, doublets_file )
     } else { doublets = readRDS( doublets_file )}
     
