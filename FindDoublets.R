@@ -12,7 +12,7 @@ library(Seurat)
 library(DoubletFinder)
   sink(tempfile()) 
 gene_counts = Read10X(count_path )
-so = CreateSeuratObject(gene_counts, min.cells = 10, min.features = 200 )
+so = CreateSeuratObject(gene_counts, min.cells = 5, min.features = 200 )
 
 ## check if mouse cells
 if (sum(grepl("MT-", rownames(so))) == 0 ){
