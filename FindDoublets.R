@@ -4,13 +4,15 @@
 
 
 Find_Doublets = function(count_path,
-                    mt_filt = 15,
-                    nDims = 15 ){
+                    mt_filt = 10,
+                    nDims = 15,
+                    min_count = NULL,
+                    min_gene = NULL){
 library(Seurat)
 library(DoubletFinder)
   sink(tempfile()) 
 gene_counts = Read10X(count_path )
-so = CreateSeuratObject(gene_counts, min.cells = 20)
+so = CreateSeuratObject(gene_counts, min.cells = 10, min.features = 200 )
 
 ## check if mouse cells
 if (sum(grepl("MT-", rownames(so))) == 0 ){
@@ -18,25 +20,34 @@ if (sum(grepl("MT-", rownames(so))) == 0 ){
 } else {
   so[["percent.mt"]] = PercentageFeatureSet(object = so, pattern = "^MT-")
 }
+## hard mitochondria filter
+so = subset(so, subset = percent.mt < mt_filt  )
 
 # Adaptive QC thresholds --------------------------------------------------
+if (is.null(min_count) | is.null(min_gene)) {
 qc.low_lib = scater::isOutlier(so$nCount_RNA, log = TRUE,  type="lower")
 qc.low_genes = scater::isOutlier(so$nFeature_RNA, log = TRUE,  type="lower")
 
 print(table(qc.low_lib, qc.low_genes))
-
 keep_cells = colnames(so)[!( qc.low_lib | qc.low_genes)]
 so = subset(so, cells = keep_cells  )
-## hard mitochondria filter
-so = subset(so, subset = percent.mt < mt_filt  )
+} else {
+  keep_cells = colnames(so)[so$nCount_RNA > min_count ]
+  print(paste0("LOW Counts removing = ", ncol(so) - length(keep_cells) ))
+  so_big = subset(so, cells = keep_cells  ) 
+  
+  keep_cells = colnames(so)[so$nFeature_RNA > min_gene ]
+  print(paste0("LOW Genes removing = ", ncol(so) - length(keep_cells) ))
+  so_big = subset(so, cells = keep_cells  ) 
+  
+}
+
 ## standard pre-processing
 so = NormalizeData(so)
 so = FindVariableFeatures(so, selection.method = "vst", nfeatures = 2000)
 so = ScaleData(so)
 so = RunPCA(so)
 so = RunUMAP(so, dims = 1:nDims)
-so = FindNeighbors(object = so, reduction = "pca", dims = 1:nDims)
-so = FindClusters(so, n.start =  100 , resolution = 0.6)
 
 ## DoubletFinder
 sweep.res.list_so = paramSweep_v3(so, PCs = 1:nDims, sct = FALSE)
@@ -44,10 +55,10 @@ sweep.stats_so = summarizeSweep(sweep.res.list_so, GT = FALSE)
 bcmvn_so = find.pK(sweep.stats_so)
 
 pK =  as.numeric(as.character(bcmvn_so$pK[which.max(bcmvn_so$BCmetric)]))
+print(paste0("pK =", pK ))
 
-homotypic.prop = modelHomotypic(so$seurat_clusters)          
-nExp_poi = round(0.04 * nrow(so@meta.data))  ## 4% doublet rate
-nExp_poi.adj = round(nExp_poi*(1-homotypic.prop))
+doublet_rate = (nrow(so@meta.data)/500 )* 0.004 ## (0.4%  doublet rate per 500 cells )
+nExp_poi = round(doublet_rate * nrow(so@meta.data))  ## 4% doublet rate
 
 so = doubletFinder_v3(so, PCs = 1:nDims, pN = 0.25, pK = pK, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
 DF_col =  which(grepl("DF.classifications", colnames(so@meta.data) ))
