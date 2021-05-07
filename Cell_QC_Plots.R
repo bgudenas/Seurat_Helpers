@@ -96,7 +96,7 @@ Prob_Clusts = function(so_big, QC_dir, percent_threshold = 0.7 ) {
 
 AutoCellType = function(mega, GO, QC_dir ){
   ## GO is a list of lists (celltypes and their marker genes)
-  cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE)
+  cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE )
   clustmat =  cluster.averages$RNA
   
   resSS = GSVA::gsva(as.matrix(clustmat), GO, method="ssgsea", ssgsea.norm = FALSE, min.sz= 3, verbose = FALSE )
