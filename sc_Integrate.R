@@ -12,7 +12,8 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
                          max_counts = NULL,
                          CC = TRUE,
                          Joint_Filt = TRUE, ## Applys low & high count filter to integrated object
-                         rem_Xist = FALSE, ## remove Xist from HVG
+                         rem_sex = FALSE, ## remove sex specific genes from from HVG
+			 pcGenes = NULL, ## Remove ncRNAs from HVG, arg takes a list of human / mouse pc genes
                          drop_cells = NULL, ## cell names to remove before processing
                          normData = NULL, ## seurat object which bypasses integration IE just want to test drop_cells, PCA/Cluster params
                          GO=NULL, ## GO  to do automated cell type annotation
@@ -30,6 +31,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   stopifnot(length(samps) == length(count_paths))
   if ( is.null(normData)){
 
+ if (!is.null(pcGenes)) pcGenes = readRDS(pcGenes)
 # Loop through each sample and apply adaptive thresholds ------------------
   print(paste("Samples = ", length(samps) ))
   so_list = vector( length = length(samps), mode = "list")
@@ -137,17 +139,22 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   so_big <- CellCycleScoring(so_big, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE)
   if ( CC == TRUE ){
   so_big$CC.Difference <- so_big$S.Score - so_big$G2M.Score
-  so_big <- quiet( ScaleData(so_big, vars.to.regress = "CC.Difference" ) )
+  so_big <- quiet( ScaleData(so_big, features = rownames(so_big), vars.to.regress = c("percent.mt")) )
   } else { so_big <- quiet( ScaleData(so_big  ) )  }
   
   so_big <- FindVariableFeatures(object = so_big, nfeatures = 3000, selection.method = "vst")
   HVG = VariableFeatures(object = so_big)
-  if (rem_Xist == TRUE) { HVG = HVG[ HVG != "Xist" ]}
+  sex_genes = c("Xist","Eif2s3y","Tsix")
+  if (sum(sex_genes %in% rownames(so_big)) ==0 ) sex_genes = toupper(sex_genes)
+  if (rem_sex == TRUE) { HVG = HVG[ !(HVG %in% c("Xist","Eif2s3y","Tsix")) ]}
+  if (!is.null(pcGenes)) HVG = HVG[ (HVG %in% pcGenes$mouse | HVG %in% pcGenes$human ) ]
+  print(paste0("HIGHLY VARIABLE GENES =", length(HVG)))
+
   so_big <- RunPCA(object = so_big,  verbose = FALSE, features = HVG, npcs = 100)
   
-  so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500 )
+  so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500, n.neighbors=60 )
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
-  so_big <- FindClusters(so_big, n.start =  100, resolution = 0.6, random.seed = 54321, group.singletons = FALSE) ## decrease resolution for broader clusters
+  so_big <- FindClusters(so_big, n.start =  100, resolution = 1, random.seed = 54321, group.singletons = TRUE) ## decrease resolution for broader clusters
   
   saveRDS(so_big, out_data_path )
   ggsave(ElbowPlot(so_big, ndims = 100), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
@@ -174,6 +181,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     g1 = FeaturePlot(so_big, min.cutoff = "q10", features = markers )
     ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_Markers.png"),  dpi=120, width = 10, height = 10)
   }
+  saveRDS(so_big, out_data_path )
     
 }
 
