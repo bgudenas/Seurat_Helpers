@@ -28,6 +28,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   library(ggplot2)
   library(stringr)
   
+  dir.create("QC")  
   stopifnot(length(samps) == length(count_paths))
   if ( is.null(normData)){
 
@@ -82,7 +83,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   }
   
   so_big <- merge(so_list[[1]], y = so_list[-1], add.cell.ids = samps, project = project )
-  rm(so_list, counts)
+  rm(so_list, counts, so)
   table(so_big$orig.ident)
   Joined_QC(so_big, QC_dir, "Joined_QC.pdf")
   
@@ -135,26 +136,27 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     cc.genes.updated.2019$s.genes = stringr::str_to_title(cc.genes.updated.2019$s.genes)
     cc.genes.updated.2019$g2m.genes = stringr::str_to_title(cc.genes.updated.2019$g2m.genes)
   }
-  
+  gc()
+  so_big <- FindVariableFeatures(object = so_big, nfeatures = 2000, selection.method = "vst")
   so_big <- CellCycleScoring(so_big, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE)
   if ( CC == TRUE ){
   so_big$CC.Difference <- so_big$S.Score - so_big$G2M.Score
-  so_big <- quiet( ScaleData(so_big, features = rownames(so_big), vars.to.regress = c("percent.mt")) )
-  } else { so_big <- quiet( ScaleData(so_big  ) )  }
-  
-  so_big <- FindVariableFeatures(object = so_big, nfeatures = 3000, selection.method = "vst")
+  so_big <- quiet( ScaleData(so_big, vars.to.regress = c("nCount_RNA", "CC.Difference")))
+  } else { so_big <- ScaleData(so_big, vars.to.regress = c("nCount_RNA")) }
+  print("SCALING DONE")
   HVG = VariableFeatures(object = so_big)
   sex_genes = c("Xist","Eif2s3y","Tsix")
-  if (sum(sex_genes %in% rownames(so_big)) ==0 ) sex_genes = toupper(sex_genes)
-  if (rem_sex == TRUE) { HVG = HVG[ !(HVG %in% c("Xist","Eif2s3y","Tsix")) ]}
-  if (!is.null(pcGenes)) HVG = HVG[ (HVG %in% pcGenes$mouse | HVG %in% pcGenes$human ) ]
+  
+  if (sum(sex_genes %in% rownames(so_big)) ==0 ){ sex_genes = toupper(sex_genes) }
+  if (rem_sex == TRUE) { HVG = HVG[ !(HVG %in% sex_genes) ]}
+  if (!is.null(pcGenes)){ HVG = HVG[ (HVG %in% pcGenes$mouse | HVG %in% pcGenes$human ) ] }
   print(paste0("HIGHLY VARIABLE GENES =", length(HVG)))
 
   so_big <- RunPCA(object = so_big,  verbose = FALSE, features = HVG, npcs = 100)
   
-  so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500, n.neighbors=60 )
+  so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500, n.neighbors=45 )
   so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
-  so_big <- FindClusters(so_big, n.start =  100, resolution = 1, random.seed = 54321, group.singletons = TRUE) ## decrease resolution for broader clusters
+  so_big <- FindClusters(so_big, n.start =  100, random.seed = 54321, group.singletons = TRUE, resolution = 1)
   
   saveRDS(so_big, out_data_path )
   ggsave(ElbowPlot(so_big, ndims = 100), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
@@ -165,21 +167,21 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   
   Prob_Clusts(so_big, QC_dir) ## plots clusters driven by single samples
   
-  g1 = DimPlot(so_big, group.by = "Sample" ) + ggtitle(paste0("Samples= ",length(unique(so_big$Sample)) ))
-  ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_Samples.png"),dpi=120, width = 10, height = 10)
+  g1 = DimPlot(so_big, group.by = "Sample", raster.dpi = c(2012, 2012)) + ggtitle(paste0("Samples= ",length(unique(so_big$Sample)) ))
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Samples.pdf"),dpi=120, width = 10, height = 10)
   so_big$Log_nCount = log( so_big$nCount_RNA )
-  g1 = FeaturePlot(so_big, features = c("Log_nCount", "percent.mt") ) + ggtitle(paste0("Cells = ", nCells ))
-  ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_QC_metrics.png"), dpi=120, width = 10, height = 10)
+  g1 = FeaturePlot(so_big, features = c("Log_nCount", "percent.mt"), raster.dpi = c(2012, 2012)) + ggtitle(paste0("Cells = ", nCells ))
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_QC_metrics.pdf"), dpi=120, width = 10, height = 10)
   
-  g1 = DimPlot(so_big, group.by = "Phase" ) + ggtitle(paste0("Cells = ", nCells ))
-  ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_Phase.png"),  dpi=120, width = 10, height = 10)
+  g1 = DimPlot(so_big, group.by = "Phase", raster.dpi = c(2012, 2012)) + ggtitle(paste0("Cells = ", nCells ))
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Phase.pdf"),  dpi=120, width = 10, height = 10)
   
-  g1 = DimPlot(so_big, label = TRUE ) + ggtitle(paste0("Cells = ", nCells ))
-  ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_Clusters.png"),  dpi=120, width = 10, height = 10)
+  g1 = DimPlot(so_big, label = TRUE, raster.dpi = c(2012, 2012)) + ggtitle(paste0("Cells = ", nCells ))
+  ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Clusters.pdf"),  dpi=120, width = 10, height = 10)
   
   if (!is.null(markers)){
-    g1 = FeaturePlot(so_big, min.cutoff = "q10", features = markers )
-    ggsave(g1, device = "png", filename = file.path(QC_dir, "UMAP_Markers.png"),  dpi=120, width = 10, height = 10)
+    g1 = FeaturePlot(so_big, min.cutoff = "q05",min.cutoff = "q95", features = markers, raster.dpi = c(2012, 2012))
+    ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Markers.pdf"),  dpi=120, width = 10, height = 10)
   }
   saveRDS(so_big, out_data_path )
     

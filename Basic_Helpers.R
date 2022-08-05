@@ -20,24 +20,39 @@ PlotSeurat = function(plot, name, path ){
   
 }
 
+clean_HVG = function(HVG, map){
+  message(paste0("HVG length = ", length(HVG)))
+  map = map[map$gene_biotype == "protein_coding", ]
+  sex_genes = c("Xist","Eif2s3y","Tsix")
+  HVG = HVG[!(HVG %in% sex_genes)]
+  HVG = HVG[!grepl("^Rpl", HVG)] ## remove ribosomal genes
+  HVG = HVG[!grepl("^Mt-", HVG)] ## remove mitochondrial genes
+  HVG = HVG[HVG %in% map$external_gene_name ] ## only protein coding
+  
+  message(paste0("HVG length post-filter = ", length(HVG)))
+  return(HVG)
+}
 
 
-
-ProcSeurat = function(mega, vars.to.regress=NULL, nDim = 20, nGenes = 2000 ) {
+ProcSeurat = function(mega, vars.to.regress=NULL, nDim = 20, nGenes = 2000, nResolution = 0.8, map) {
   
   mega <- NormalizeData(mega, normalization.method = "LogNormalize", scale.factor = 10000)
   
   if (!is.null(vars.to.regress) ) {
-    mega <- ScaleData(mega, vars.to.regress = vars.to.regress )
+    mega <- ScaleData(mega, vars.to.regress = vars.to.regress, block.size=2000)
   } else {
-    mega <- ScaleData( object = mega, verbose = FALSE )
+    mega <- ScaleData( object = mega, verbose = FALSE, block.size=2000)
   }
-  mega <- FindVariableFeatures(mega, nfeatures = nGenes )
-  mega <- RunPCA(mega, npcs = 75, ndims.print = 1:5, nfeatures.print = 5 )
+  mega <- FindVariableFeatures(mega, nfeatures = nGenes+1000 ) ## add buffer to account for genes lost
+  HVG = VariableFeatures(mega)
+  HVG = clean_HVG(HVG, map)
+  HVG = HVG[1:nGenes] # trim to nGenes
+  
+  mega <- RunPCA(mega, npcs = 100, features = HVG, ndims.print = 1:5, nfeatures.print = 5 )
   
   mega <- FindNeighbors(mega, reduction = "pca", dims = 1:nDim  )
-  mega <- FindClusters(mega,  n.start = 100, random.seed=54321, resolution = 0.5  )
-  mega <- RunUMAP(object = mega, reduction = "pca", dims = 1:nDim )
+  mega <- FindClusters(mega,  n.start = 100, random.seed=54321, resolution = nResolution  )
+  mega <- RunUMAP(object = mega, reduction = "pca", dims = 1:nDim, n.neighbors=45, n.epochs=500)
   
   return(mega)
 }

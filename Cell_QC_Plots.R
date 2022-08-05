@@ -96,10 +96,10 @@ Prob_Clusts = function(so_big, QC_dir, percent_threshold = 0.7 ) {
 
 AutoCellType = function(mega, GO, QC_dir ){
   ## GO is a list of lists (celltypes and their marker genes)
-  cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = TRUE )
+  cluster.averages <- AverageExpression(object = mega, verbose = FALSE, use.scale = FALSE )
   clustmat =  cluster.averages$RNA
   
-  resSS = GSVA::gsva(as.matrix(clustmat), GO, method="ssgsea", ssgsea.norm = FALSE, min.sz= 3, verbose = FALSE )
+  resSS = GSVA::gsva(as.matrix(clustmat), GO, method="ssgsea", ssgsea.norm = TRUE, min.sz= 3, verbose = FALSE )
   df = as.data.frame(matrix(nrow= ncol(clustmat), ncol = 3 ) )
   colnames(df) = c("Cluster", "SSGSEA","Score" )
   rownames(df) = colnames(clustmat)
@@ -114,7 +114,38 @@ AutoCellType = function(mega, GO, QC_dir ){
   df$Cluster = colnames(clustmat)
   mega$auto_celltype = df$SSGSEA[match(mega$seurat_clusters, df$Cluster)]
   g1 = DimPlot(mega, group.by= "auto_celltype", label = TRUE)
-  ggplot2::ggsave(g1, device = "png", filename=file.path(QC_dir, "Auto_celltype.png"), width = 10, height = 7, dpi = 100)
+  ggplot2::ggsave(g1, device = "pdf", filename=file.path(QC_dir, "Auto_celltype.pdf"), width = 10, height = 7)
+  
+  return(mega)
+}
+
+
+
+
+
+
+scAutoCellType = function(mega, GO, QC_dir ){
+  ## GO is a list of lists (celltypes and their marker genes)
+ 
+  resSS = matrix(nrow=length(GO), ncol = ncol(mega), data = 0)
+  for ( i in 1:ncol(mega)){
+    cell_vec = as.matrix(mega@assays$RNA@data[ ,i])
+  
+  res_cell = GSVA::gsva(cell_vec, GO, method="ssgsea", ssgsea.norm = FALSE, min.sz= 10, verbose = FALSE )
+  resSS[ ,i] = as.numeric(res_cell)
+  
+  }
+  vals = c()
+  for (i in 1:ncol(resSS)){
+    vals =c(vals, rownames(resSS)[which.max(resSS[ ,i])] )
+  }
+  
+  df$SSGSEA = vals
+  df$Score = apply(resSS, 2, max)
+  df$cell = colnames(mega)
+  mega$auto_celltype = df$SSGSEA[match(colnames(mega), df$cell)]
+  g1 = DimPlot(mega, group.by= "auto_celltype", label = TRUE)
+  ggplot2::ggsave(g1, device = "pdf", filename=file.path(QC_dir, "Auto_celltype.pdf"), width = 12, height = 7)
   
   return(mega)
 }
