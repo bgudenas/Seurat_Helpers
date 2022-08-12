@@ -12,7 +12,11 @@ message(paste0("dimensions=", dim(so)))
 
 message(paste("Outname=", args[2]))
 
+if (grepl("originalexp", names(so@assays))){
+  counts_df = so@assays$originalexp@counts
+} else {
 counts_df <- so@assays$RNA@counts
+}
 fname=args[2]
 # make a column vector and write to a file
 # mat_frame <- 1:counts_df@Dim[2]
