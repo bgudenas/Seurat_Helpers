@@ -11,13 +11,17 @@ classify_tumors = function(model_path,
                            atlas_path,
                            tumors,
                            plot_name,
-                           plot_dir="../Figures/",
-                           threshold=0.5) {
-
+                           plot_dir="../Figures/ML",
+                           data_dir="../Data/ML/",
+                           threshold=0.5,
+                           subgroup_order=NULL,
+                           nPerm=10) {
+set.seed(54321)
 library(Seurat)
 library(stringr)
 library(ggplot2)
 library(dplyr)
+library(RColorBrewer)
 th <- theme_bw() +
   theme(text = element_text(size=16, family = "Helvetica" ), panel.grid.major = element_blank(), panel.grid.minor = element_blank() )
 library(xgboost)
@@ -29,11 +33,17 @@ xg_mod = readRDS(model_path)
 atlas = readRDS(atlas_path)
 
 mm_feats = xg_mod$feature_names
+## check if human gene names
+if (sum(mm_feats %in% map$hsapiens_homolog_associated_gene_name) > round(0.75*length(mm_feats), 0)){
+  message("Human gene symbols detected -------")
+  hs_feats = mm_feats
+} else{
 hs_feats = map$hsapiens_homolog_associated_gene_name[match(mm_feats, map$external_gene_name)]
+}
 
 hs_feats = hs_feats[hs_feats %in% rownames(tumors)]
 
-bin_tumors = make_binary(tumors, pc_genes = hs_feats)
+bin_tumors = make_binary(tumors, bin_genes = hs_feats)
 
 genes_present = map$external_gene_name[match(colnames(bin_tumors), map$hsapiens_homolog_associated_gene_name)]
 genes_missing = mm_feats[!(mm_feats %in% genes_present)]
@@ -49,9 +59,26 @@ bin_tumors = bin_tumors[ ,mm_feats]
 
 preds <- predict(xg_mod, bin_tumors, reshape = TRUE)
 
+# derive null predictions -------------------------------------------------
+message("Calibrating null predictions")
+rand_mat = preds
+rand_mat[rand_mat > 0 ] = 0 ## set matrix to zero to initialize loop
+
+for ( i in 1:nPerm){
+tmp_tumors = bin_tumors
+old_labels = colnames(tmp_tumors)
+tmp_tumors = tmp_tumors[ ,sample(1:ncol(tmp_tumors))]
+colnames(tmp_tumors) = old_labels
+null_preds <- predict(xg_mod, tmp_tumors, reshape = TRUE)
+
+rand_mat = rand_mat + null_preds
+}
+rand_mat = rand_mat/nPerm
+
 annots = data.frame("Cell" = colnames(atlas),
                     "Celltype" = atlas$Celltype)
-label_2_num = setNames(as.numeric(as.factor(unique(annots$Celltype)))-1,
+
+label_2_num = setNames(as.numeric(as.factor(unique(annots$Celltype)))-1,  
                        unique(annots$Celltype))
 
 colnames(preds) = 1:ncol(preds)
@@ -59,12 +86,32 @@ colnames(preds) = 1:ncol(preds)
 for (i in 1:ncol(preds)){
   colnames(preds)[i] =  names(label_2_num)[label_2_num == (i-1)]
 }
+rownames(preds) = rownames(bin_tumors)
 
+calibrated_preds = preds - rand_mat
+calibrated_preds[calibrated_preds < 0 ] = 0
+
+output = list("pred_mat" = preds, "ID" = tumors$ID, "Subgroup" = tumors$Subgroup, "calibrated_mat" = calibrated_preds)
+saveRDS(output, paste0( data_dir, plot_name, "_cell_predictions.rds"))
+
+
+plot_pred_heatmap(pred_list=output,
+                             out_plot_dir=plot_dir,
+                             out_name=paste0(plot_name, "_heatmap"),
+                             threshold=0.6,
+                             subgroup_order=subgroup_order)
+
+plot_pred_heatmap(pred_list=output,
+                  calibrated = TRUE,
+                  out_plot_dir=plot_dir,
+                  out_name=paste0(plot_name, "_heatmap_calibrated"),
+                  threshold=0.4,
+                  subgroup_order=subgroup_order)
+  
 max_preds = colnames(preds)[apply(preds, 1, which.max)]
 
 celltype_order = c(sort(unique(max_preds)), "Unknown_low_conf")
-# too_low = rowSums(bin_tumors) < 30
-# max_preds[too_low] = "Unknown_low_conf"
+
 max_score = apply(preds, 1, max)
 max_preds[max_score <= threshold] = "Unknown_low_conf"
 
@@ -73,8 +120,6 @@ ldf = as.data.frame(table(max_preds, tumors$Subgroup)) %>%
   summarise("Percent" = Freq/sum(Freq), "Celltype" = max_preds)
 ldf$Celltype = factor(ldf$Celltype, levels = celltype_order)
 
-
-library(RColorBrewer)
 n <- length(unique(ldf$Celltype)) -1
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
@@ -94,30 +139,73 @@ ggplot(ldf, aes(x=Celltype, y = Percent)) +
 ggsave(last_plot(), 
        filename = file.path(plot_dir, paste0(plot_name, "_predictions_subgroup.pdf")),
        device="pdf", width = 12, height = 8)
-
-# 
-# samp_mat = c()
-# for ( i in unique(tumors$ID)){
-#  cells = tumors$ID==i
-#  samp_preds = colMeans(preds[cells, ])
-#  samp_mat = cbind(samp_mat, samp_preds)
-# }
-# colnames(samp_mat) =  unique(tumors$ID)
-# ldf = reshape2::melt(samp_mat)
-# ldf$Subgroup = tumors$Subgroup[match(ldf$Var2, tumors$ID)]
-# 
-# ldf = ldf[order(ldf$Subgroup, ldf$Var2), ]
-# 
-# ldf$Var2 = factor(ldf$Var2, levels =unique(ldf$Var2))
-# ggplot(ldf, aes(x=Var1, y = value)) +
-#   geom_bar( aes(fill = Subgroup), stat="identity") +
-#   facet_wrap( ~ Var2) +
-#   theme_bw() +
-#   th +
-#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-# 
-# ggsave(last_plot(),
-#        filename = file.path(plot_dir, paste0(plot_name, "_predictions_sample.pdf")),
-#        device="pdf", width = 14, height = 10)
-
 }
+
+
+
+# Plot a heatmap per sample of average classifier confidence calls --------
+
+plot_pred_heatmap = function(pred_list,
+                             calibrated=FALSE,
+                             out_plot_dir="../Figures/ML",
+                             out_name,
+                             threshold=0.6,
+                             subgroup_order=NULL){
+  library(pheatmap)
+  dir.create(out_plot_dir, showWarnings = FALSE)
+  
+  if (calibrated == TRUE){ 
+    pmat = pred_list$calibrated_mat 
+  } else { 
+    pmat = pred_list$pred_mat
+  }
+  
+  IDs = pred_list$ID
+  subgroup = pred_list$Subgroup
+  
+  stopifnot(length(IDs) == nrow(pmat))
+  
+  
+  samp_mat = matrix(nrow = length(unique(IDs)),
+                    ncol = ncol(pmat),
+                    data = 0)
+  colnames(samp_mat) = colnames(pmat)
+  rownames(samp_mat) = unique(IDs)
+  
+  for (i in unique(IDs)){
+    samp_mat[i, ] = colMeans(pmat[IDs == i, ])
+  }
+  
+  anno_cols = data.frame(row.names =  unique(IDs),
+                         "Subgroup" = subgroup[match( unique(IDs), IDs)])
+  if (!is.null(subgroup_order)){
+    anno_cols$Subgroup = factor(anno_cols$Subgroup, levels = subgroup_order)
+  }
+  
+ # ords = hclust(as.dist(1-cor(t(samp_mat))), method = "ward.D2")
+  #ords = hclust(as.dist(t(samp_mat)), method = "ward.D2")
+ # samp_mat = samp_mat[order(anno_cols$Subgroup, ords$order), ]
+  samp_mat = samp_mat[order(anno_cols$Subgroup), ]
+  cols = colorRampPalette(colors = c("blue4","blue","white","red","red4") )(100)
+  
+  samp_mat[samp_mat > threshold] = threshold
+  p1 = pheatmap(samp_mat,
+                annotation_row = anno_cols,
+                cluster_rows = FALSE,
+                cluster_cols = FALSE,
+                cellwidth = 10,
+                cellheight = 10,
+                color = cols )
+  out_file = file.path(out_plot_dir, paste0(out_name, ".pdf"))
+  
+  pdf(out_file, width = 12, height = 10)
+  print(p1)
+  dev.off()
+  message("Heatmap created --------")
+  return(p1)
+}
+# plot_pred_heatmap(pred_data_path = "../Data/ML/Pineal_celltypes_cell_predictions.rds",
+#                   out_name="PB_pineal",
+#                   subgroup_order=c("PB-miRNA1","PB-miRNA2", "PB-MYC/FOXR2","PB-RB", "PPTID",  
+#                                    "PC","PAT", "PTPR")
+# )

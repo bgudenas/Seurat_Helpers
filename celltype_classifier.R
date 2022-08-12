@@ -40,13 +40,13 @@ message("Finding marker genes")
 ct_feats = feats %>%
   filter(gene %in% pc_genes ) %>% 
   group_by(cluster) %>% 
-  top_n(wt = avg_log2FC, 40) %>% 
+  top_n(wt = avg_log2FC, 100) %>% 
   .$gene %>% 
   unique
 
 message("Number of Features = ", length(ct_feats))
 
-bin_mat = make_binary(so, pc_genes = ct_feats)
+bin_mat = make_binary(so, bin_genes = ct_feats)
 
 #bin_mat = bin_mat[ ,colnames(bin_mat) %in% ct_feats]
 
@@ -125,40 +125,40 @@ saveRDS(output, "../Data/XGBoost_testset_output.rds")
 }
 
 
-make_binary = function(so, q_threshold=0.8, pc_genes){
+make_binary = function(so, q_threshold=0.8, bin_genes){
+  set.seed(54321)
+  ## derive q_threshold from a subset of genes (pc genes & orthologues for speed)
+  map = readRDS("~/Annots/Annotables/Mm10.rds")
+  map = map[map$gene_biotype == "protein_coding", ]
+  map = map[!duplicated(map$hsapiens_homolog_associated_gene_name) & !duplicated(map$hsapiens_homolog_associated_gene_name, fromLast = TRUE),  ]
+  genes = c(map$external_gene_name, map$hsapiens_homolog_associated_gene_name)
+  genes = genes[genes != ""]
+  genes = genes[genes %in% rownames(so)]
+  ## if number of cells is greater than 50000, than randomly select 50k for threshold identificaiton
+  if (ncol(so) > 50000 ){
+    cell_vec = sample(1:ncol(so), 50000)
+  } else {cell_vec = 1:ncol(so)}
+  
   if (grepl("originalexp", names(so@assays))){
-    cell_vec = sample(1:ncol(so), 0.5*ncol(so))
-    datExpr = so@assays$originalexp@data[ ,cell_vec]
+    datExpr = so@assays$originalexp@data[genes ,cell_vec]
+    ## find 80th percentile in normalized data (unless it is already saved in )
+    threshold = find_threshold(datExpr,
+                               q_threshold,
+                               saved_threshold="../Data/q80_normData_bin_threshold.rds")
+    ncounts = as.matrix(so@assays$originalexp@data[bin_genes, ])
     
-    vec = vector(mode = "numeric", length = ncol(datExpr))
-    for (i in 1:ncol(datExpr)){
-      vec[i] = quantile(as.numeric(datExpr[ ,i]), q_threshold)
-    }
-    threshold = median(vec)
-    
-    ncounts = as.matrix(so@assays$originalexp@data[pc_genes, ])
   } else {
-    cell_vec = sample(1:ncol(so), 0.5*ncol(so))
-    datExpr = so@assays$RNA@data[ ,cell_vec]
-    
-    vec = vector(mode = "numeric", length = ncol(datExpr))
-    for (i in 1:ncol(datExpr)){
-      vec[i] = quantile(as.numeric(datExpr[ ,i]), q_threshold)
-    }
-    threshold = median(vec)
-          #ncounts = as.matrix(so@assays$RNA@counts[pc_genes, ])
-          ncounts = as.matrix(so@assays$RNA@data[pc_genes, ])
+    datExpr = so@assays$RNA@data[genes ,cell_vec]
+    threshold = find_threshold(datExpr,
+                               q_threshold,
+                               saved_threshold="../Data/q80_normData_bin_threshold.rds")
+          ncounts = as.matrix(so@assays$RNA@data[bin_genes, ])
   }
- # threshold = quantile(ncounts, q_threshold)
-  # cell_quants = apply(ncounts, 2, FUN= function(x) quantile(x, 0.8))
-  # for (i in 1:ncol(ncounts)){
-  #   ncounts[ ,i] = ifelse(ncounts[ ,i] > cell_quants[i], 1, 0)
-  # }
-  print(threshold)
+   print(threshold)
    ncounts[ncounts > threshold] = 1
    ncounts[ncounts < 1 ] = 0
-  ncounts = t(ncounts)
-  return(ncounts)
+   ncounts = t(ncounts)
+   return(ncounts)
 }
 
 param_sweep_xgboost = function(train, label_2_num){
@@ -222,6 +222,26 @@ return(md)
 }
 
 
+find_threshold = function(datExpr, 
+                          q_threshold, 
+                          saved_threshold="../Data/q80_normData_bin_threshold.rds") {
+  
+  if (!file.exists(saved_threshold)){
+    message("FInding threshold ----")
+    vec = vector(mode = "numeric", length = ncol(datExpr))
+    for (i in 1:ncol(datExpr)){
+      vec[i] = quantile(as.numeric(datExpr[ ,i]), q_threshold)
+    }
+    threshold = median(vec)
+    saveRDS(threshold, saved_threshold)
+  } else {
+    message("Saved threshold found ----")
+    threshold = readRDS(saved_threshold)
+  }
+  return(threshold)
+}
+
+
 #### function to find classifier confidence threshold for low-confidence calls
 find_cutoff = function(pred_matrix, reference_labels){
   stopifnot(length(reference_labels) == nrow(pred_matrix)) ## check pred matrix matches ref labels
@@ -248,3 +268,19 @@ find_cutoff = function(pred_matrix, reference_labels){
   message(paste0("Highest cut before accuracy dropoff = ", highest_cut))
   return(highest_cut)
 }
+
+
+
+
+
+# 
+# feats$pos = 0
+# 
+# for (i in 1:nrow(feats)){
+#   
+#   geneName = feats$gene[i]
+#   celltype = feats$cluster[i]
+#   otx2 = ifelse(atlas@assays$RNA@data[geneName, ] > 0, 1, 0)
+#   ratio = sum(otx2[atlas$Celltype == celltype ])/sum(otx2[atlas$Celltype != celltype ])
+#   feats$pos[i] = ratio
+# }
