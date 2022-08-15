@@ -3,7 +3,8 @@
 Make_sc_Classifier = function(so,
                               map_path = "~/Annots/Annotables/Mm10.rds",
                               feats_path = "../Data/ML_features.rds",
-                              out_feats = "../Data/ML_features.rds"){
+                              out_feats = "../Data/ML_features.rds",
+                              best_param=NULL){
   
 shhh <- suppressPackageStartupMessages
 shhh(library(Seurat))
@@ -94,7 +95,7 @@ test = list("data" = test_data, "label" = test_labels, "celltype" = test_celltyp
 model_output = "../Data/Xgboost_celltype_model.rds"
 if (!file.exists(model_output)){
   message("Starting XGBoost")
-  pred_model = param_sweep_xgboost(train, label_2_num)
+  pred_model = param_sweep_xgboost(train, label_2_num, best_param=best_param)
   saveRDS(pred_model, model_output)
 } else {
   pred_model = readRDS(model_output)
@@ -161,8 +162,10 @@ make_binary = function(so, q_threshold=0.8, bin_genes){
    return(ncounts)
 }
 
-param_sweep_xgboost = function(train, label_2_num){
+param_sweep_xgboost = function(train, label_2_num, best_param = NULL, nround=400){
   
+  if (is.null(best_param)){
+  message("Starting XGboost grid-search")
   best_param = list()
   best_seednumber = 54321
   best_logloss = Inf
@@ -179,7 +182,8 @@ param_sweep_xgboost = function(train, label_2_num){
                   subsample = sample(seq(0.5, 1, 0.1), 1), #Typical values: 0.5-1
                   colsample_bytree = sample(seq(0.5, 1, 0.1), 1), #Typical values: 0.5-1
                   min_child_weight = sample(1:10, 1),
-                  max_delta_step = sample(1:10, 1)
+                  max_delta_step = sample(1:10, 1),
+                  nthread=10
     )
     cv.nround = 400
     cv.nfold = 5
@@ -212,12 +216,12 @@ param_sweep_xgboost = function(train, label_2_num){
   print("best_round")
   print(nround)
   output = list("best_param" = best_param, "best_round" = nround)
-  #
+  } 
+  message("Making Final XGBoost model ---------")
   md <- xgboost(data=train$data,
                 label = train$label,
 		            params=best_param,
- 	            	nrounds=nround,
-	            	nthread=10)
+ 	            	nrounds=nround )
 return(md)
 }
 
