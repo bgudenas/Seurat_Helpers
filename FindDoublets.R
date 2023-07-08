@@ -5,7 +5,7 @@
 
 Find_Doublets = function(count_path,
                     mt_filt = 10,
-                    nDims = 15,
+                    nDims = 35,
                     min_count = NULL,
                     min_gene = NULL){
 library(Seurat)
