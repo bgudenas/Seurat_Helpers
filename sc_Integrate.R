@@ -137,12 +137,12 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
     cc.genes.updated.2019$g2m.genes = stringr::str_to_title(cc.genes.updated.2019$g2m.genes)
   }
   gc()
-  so_big <- FindVariableFeatures(object = so_big, nfeatures = 2000, selection.method = "vst")
-  so_big <- CellCycleScoring(so_big, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE)
+  so_big <- FindVariableFeatures(object = so_big, nfeatures = 2000, selection.method = "vst", verbose=FALSE)
+  so_big <- CellCycleScoring(so_big, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE, verbose=FALSE)
   if ( CC == TRUE ){
   so_big$CC.Difference <- so_big$S.Score - so_big$G2M.Score
-  so_big <- quiet( ScaleData(so_big, vars.to.regress = c("nCount_RNA", "CC.Difference")))
-  } else { so_big <- ScaleData(so_big, vars.to.regress = c("nCount_RNA")) }
+  so_big <- quiet( ScaleData(so_big, vars.to.regress = c("nCount_RNA", "CC.Difference"), verbose=FALSE))
+  } else { so_big <- ScaleData(so_big, vars.to.regress = c("nCount_RNA"), verbose=FALSE) }
   print("SCALING DONE")
   HVG = VariableFeatures(object = so_big)
   sex_genes = c("Xist","Eif2s3y","Tsix")
@@ -152,11 +152,11 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   if (!is.null(pcGenes)){ HVG = HVG[ (HVG %in% pcGenes$mouse | HVG %in% pcGenes$human ) ] }
   print(paste0("HIGHLY VARIABLE GENES =", length(HVG)))
 
-  so_big <- RunPCA(object = so_big,  verbose = FALSE, features = HVG, npcs = 100)
+  so_big <- RunPCA(object = so_big, features = HVG, npcs = 100, verbose=FALSE)
   
-  so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500, n.neighbors=45 )
-  so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims)
-  so_big <- FindClusters(so_big, n.start =  100, random.seed = 54321, group.singletons = TRUE, resolution = 1)
+  so_big <- RunUMAP(object = so_big, reduction = "pca", dims = 1:nDims, n.epochs = 500, n.neighbors=45 , verbose=FALSE)
+  so_big <- FindNeighbors(object = so_big, reduction = "pca", dims = 1:nDims, verbose=FALSE)
+  so_big <- FindClusters(so_big, n.start =  100, random.seed = 54321, group.singletons = TRUE, resolution = 1, verbose=FALSE)
   
   saveRDS(so_big, out_data_path )
   ggsave(ElbowPlot(so_big, ndims = 100), device = "pdf", filename = file.path(QC_dir, "Integrated_Elbow_Plot.pdf"))
@@ -180,7 +180,7 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Clusters.pdf"),  dpi=120, width = 10, height = 10)
   
   if (!is.null(markers)){
-    g1 = FeaturePlot(so_big, min.cutoff = "q05",min.cutoff = "q95", features = markers, raster.dpi = c(2012, 2012))
+    g1 = FeaturePlot(so_big, min.cutoff = "q05",max.cutoff = "q95", features = markers, raster.dpi = c(2012, 2012))
     ggsave(g1, device = "pdf", filename = file.path(QC_dir, "UMAP_Markers.pdf"),  dpi=120, width = 10, height = 10)
   }
   saveRDS(so_big, out_data_path )
