@@ -2,9 +2,19 @@
 
 Make_sc_Classifier = function(so,
                               map_path = "~/Annots/Annotables/Mm10.rds",
+<<<<<<< HEAD
+                              feats_path = "../Data/ML/ML_features.rds",
+                              ML_dir ="../Data/ML/",
+                              best_param=NULL,
+			                        nfeats=100,
+			                        down_prop = 0.01,
+			                        downsample = FALSE,
+                              gene_list_path="/home/bgudenas/Proj/PB_origins/CB_PN_RT_Atlas/Data/genes_expressed/Genes_present_5percent_2datasets.rds"){
+=======
                               feats_path = "../Data/ML_features.rds",
                               out_feats = "../Data/ML_features.rds",
                               best_param=NULL){
+>>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   
 shhh <- suppressPackageStartupMessages
 shhh(library(Seurat))
@@ -12,6 +22,7 @@ shhh(library(ggplot2))
 th <- theme(text = element_text(size=14, family = "Helvetica" ), panel.grid.major = element_blank(), panel.grid.minor = element_blank() )
 shhh(library(dplyr))
 shhh(library(xgboost))
+dir.create(ML_dir, showWarnings = FALSE)
 
 map = readRDS(map_path)
 map = map[map$gene_biotype == "protein_coding", ]
@@ -24,24 +35,48 @@ map = map[!duplicated(map$hsapiens_homolog_associated_gene_name) & !duplicated(m
 drops = map$external_gene_name[grepl("^Rpl|^Rps|^mt-", map$external_gene_name)] ## remove ribosomal/ mitocondrial genes
 map = map[!(map$external_gene_name %in% drops), ]
 
+if (!is.null(gene_list_path)){
+ ## filter genes
+  gene_list = readRDS(gene_list_path)
+  map = map[ map$external_gene_name %in% gene_list | map$hsapiens_homolog_associated_gene_name %in% gene_list, ]
+}
+
 pc_genes = c(map$external_gene_name, map$hsapiens_homolog_associated_gene_name)
 pc_genes = pc_genes[pc_genes != ""]
 #pc_genes = map$external_gene_name[map$hsapiens_homolog_associated_gene_name != ""]
 pc_genes = pc_genes[pc_genes %in% rownames(so)]
 message(paste0("PC genes loaded = ",length(pc_genes)))
 
+if (downsample == TRUE){
+message("Downsampling -----------")
+library(scuttle)
+library(SingleCellExperiment)
+sce = as.SingleCellExperiment(so)
+assay(sce, "logcounts") <- normalizeCounts(sce, log = TRUE, downsample = TRUE, down.prop = down_prop)
+mega@assays$RNA@data = assay(sce, "logcounts")
+}
+
+
 if (!file.exists(feats_path)){
 message("Finding marker genes")
   so@active.ident = factor(so$Celltype)
-  feats = FindAllMarkers(so, test.use="LR", only.pos=TRUE, min.pct=0.4, logfc=0.58, min.diff.pct=0.2)
-  saveRDS(feats, out_feats)
+  feats = FindAllMarkers(so, test.use="LR", only.pos=TRUE, min.diff.pct = 0.1 )
+  saveRDS(feats, feats_path) 
 } else {
  feats = readRDS(feats_path)
 }
+
+feats$pct.diff = feats$pct.1 -  feats$pct.2
+feats = feats[feats$p_val_adj <= 0.01 , ]
+
 ct_feats = feats %>%
   filter(gene %in% pc_genes ) %>% 
   group_by(cluster) %>% 
+<<<<<<< HEAD
+  top_n(wt = pct.diff, nfeats) %>% 
+=======
   top_n(wt = avg_log2FC, 100) %>% 
+>>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   .$gene %>% 
   unique
 
@@ -59,12 +94,12 @@ label_2_num = setNames(as.numeric(as.factor(unique(annots$Celltype)))-1,
                        unique(annots$Celltype))
 annots$Label = label_2_num[match(annots$Celltype, names(label_2_num))]
 
-## select 75% of each celltype for training
+## select 80% of each celltype for training
 set.seed(54321)
 
 train_cells = annots %>% 
   group_by(Celltype) %>% 
-  sample_frac( 0.75 ) %>% 
+  sample_frac( 0.80 ) %>% 
   .$Cell
 
 train_data = bin_mat[train_cells, ]
@@ -81,21 +116,15 @@ stopifnot( sum(rownames(test_data) %in% rownames(train_data)) == 0 ) ## check th
 train = list("data" = train_data, "label" = train_labels, "celltype" = train_celltypes)
 test = list("data" = test_data, "label" = test_labels, "celltype" = test_celltypes)
 
-#pred_model <- xgboost(data = train$data, 
-#                     label = train$label, 
-#                     num_class = length(label_2_num),
-#                     max.depth = 6,
-#                     min_child_weight = 1,
-#                     early_stopping_rounds=8,
-#                     eta = 0.1, 
-#                     nthread = 4, 
-#                     nrounds = 100, 
-#                     objective = "multi:softprob")
+model_output = paste0(ML_dir, "/Xgboost_celltype_model_", nfeats, ".rds")
 
-model_output = "../Data/Xgboost_celltype_model.rds"
 if (!file.exists(model_output)){
   message("Starting XGBoost")
+<<<<<<< HEAD
+  pred_model = param_sweep_xgboost(train, label_2_num, weight = FALSE, best_param=best_param)
+=======
   pred_model = param_sweep_xgboost(train, label_2_num, best_param=best_param)
+>>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   saveRDS(pred_model, model_output)
 } else {
   pred_model = readRDS(model_output)
@@ -119,9 +148,11 @@ print(conf_mat)
 #cut_val = find_cutoff(pred_matrix = preds, reference_labels = test$celltype)
 
 output = list("xgboost_model" = pred_model,
+              "Downsample" = downsample,
+              "nFeatures_per_celltype" = nfeats,
               "Cutoff"= 0.5,
               "conf_matrix" = conf_mat)
-saveRDS(output, "../Data/XGBoost_testset_output.rds")
+saveRDS(output, paste0(ML_dir, "/XGBoost_testset_output_", nfeats,"_DS_", downsample, ".rds"))
 
 }
 
@@ -135,9 +166,15 @@ make_binary = function(so, q_threshold=0.8, bin_genes){
   genes = c(map$external_gene_name, map$hsapiens_homolog_associated_gene_name)
   genes = genes[genes != ""]
   genes = genes[genes %in% rownames(so)]
+<<<<<<< HEAD
+  ## if number of cells is greater than 50000, than randomly select 50k for threshold identification
+  if (ncol(so) > 80000 ){
+    cell_vec = sample(1:ncol(so), 80000)
+=======
   ## if number of cells is greater than 50000, than randomly select 50k for threshold identificaiton
   if (ncol(so) > 50000 ){
     cell_vec = sample(1:ncol(so), 50000)
+>>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   } else {cell_vec = 1:ncol(so)}
   
   if (grepl("originalexp", names(so@assays))){
@@ -162,8 +199,17 @@ make_binary = function(so, q_threshold=0.8, bin_genes){
    return(ncounts)
 }
 
+<<<<<<< HEAD
+param_sweep_xgboost = function(train, label_2_num, best_param = NULL, weight=TRUE, nround=500){
+  
+  ## create label weights for imbalanced classes min(class_sizes)/class_sizes
+  weight_map = min(table(train$label))/table(train$label)
+  weightsData = as.numeric(weight_map[ match(train$label, names(weight_map)) ])
+  
+=======
 param_sweep_xgboost = function(train, label_2_num, best_param = NULL, nround=400){
   
+>>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   if (is.null(best_param)){
   message("Starting XGboost grid-search")
   best_param = list()
@@ -171,33 +217,46 @@ param_sweep_xgboost = function(train, label_2_num, best_param = NULL, nround=400
   best_logloss = Inf
   best_logloss_index = 0
   
-  for (iter in 1:100) {
+  for (iter in 1:50) {
     param <- list(objective = "multi:softprob",
                   eval_metric = "mlogloss",
                   num_class = length(label_2_num),
                   max_depth = sample(3:10, 1), # Typical values: 3-10
                   eta = sample(seq(0.01, 0.2, 0.01), 1),  #Typical values:0.01-0.2
                   gamma = sample(seq(0.0, 0.2, 0.1), 1),
-                  scale_pos_weight = sample(seq(0, 2, 0.5), 1),
+                  scale_pos_weight = 1, #sample(seq(0, 2, 0.5), 1),
                   subsample = sample(seq(0.5, 1, 0.1), 1), #Typical values: 0.5-1
                   colsample_bytree = sample(seq(0.5, 1, 0.1), 1), #Typical values: 0.5-1
                   min_child_weight = sample(1:10, 1),
                   max_delta_step = sample(1:10, 1),
                   nthread=10
     )
-    cv.nround = 400
+    cv.nround = 500
     cv.nfold = 5
     seed.number = sample.int(10000, 1)[[1]]
     set.seed(seed.number)
-    mdcv <- xgb.cv(data=train$data, 
+    
+    if (weight == TRUE){
+    mdcv <- xgb.cv(data = train$data, 
                    label = train$label,
-                   params = param, 
-                   nthread=10, 
-                   nfold=cv.nfold, 
-                   nrounds=cv.nround,
+                   weight = weightsData,
+                   params = param,
+                   nfold = cv.nfold, 
+                   nrounds = cv.nround,
                    verbose = FALSE, 
                    early_stopping_rounds=5, 
-                   maximize=FALSE)
+                   maximize=FALSE )
+    } else if (weight == FALSE) {
+      print("Not using class weights ----------------")
+      mdcv <- xgb.cv(data = train$data, 
+                     label = train$label,
+                     params = param,
+                     nfold = cv.nfold, 
+                     nrounds = cv.nround,
+                     verbose = FALSE, 
+                     early_stopping_rounds=5, 
+                     maximize=FALSE )
+    }
     
     min_logloss =  min(mdcv$evaluation_log$test_mlogloss_mean)
     min_logloss_index = which.min(mdcv$evaluation_log$test_mlogloss_mean)
@@ -216,12 +275,29 @@ param_sweep_xgboost = function(train, label_2_num, best_param = NULL, nround=400
   print("best_round")
   print(nround)
   output = list("best_param" = best_param, "best_round" = nround)
+<<<<<<< HEAD
+  }
+  message("Making Final XGBoost model ---------")
+  if (weight == TRUE){
+=======
   } 
   message("Making Final XGBoost model ---------")
+>>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   md <- xgboost(data=train$data,
                 label = train$label,
+                weight = weightsData,
 		            params=best_param,
  	            	nrounds=nround )
+<<<<<<< HEAD
+  } else if (weight == FALSE){
+    print("Not using class weights ----------------")
+    md <- xgboost(data=train$data,
+                  label = train$label,
+                  params=best_param,
+                  nrounds=nround )
+    }
+=======
+>>>>>>> 25952928a71987dd6bbce47066433df8306250cd
 return(md)
 }
 

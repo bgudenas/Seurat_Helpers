@@ -11,8 +11,14 @@ message("Seurat object loaded")
 message(paste0("dimensions=", dim(so)))
 
 message(paste("Outname=", args[2]))
-
+  
   counts_df <- so@assays$RNA@counts
+  if (args[3] == "data"){
+print("Normalized data")
+
+counts_df <- so@assays$RNA@data
+}  
+
   fname=args[2]
   # make a column vector and write to a file
  # mat_frame <- 1:counts_df@Dim[2]
@@ -31,9 +37,8 @@ message(paste("Outname=", args[2]))
   count = 1
   for(i in l){
     print(count)
-    write.table(counts_df[i,], file=fname, sep = "\t", row.names = TRUE,
+    write.table(round(counts_df[i,], 2), file=fname, sep = "\t", row.names = TRUE,
                 append = TRUE, quote = FALSE, col.names=FALSE)
     count = count + 1
   }
   print("DONE WRITING")
-
