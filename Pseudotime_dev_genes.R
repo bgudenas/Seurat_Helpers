@@ -14,7 +14,6 @@ Add_pseuodtimes_seurat = function(so,
     
     pseudo_vec = ps@colData[ ,slings[i]]
     names(pseudo_vec) = rownames(ps@colData)
-    
     sling_mat[ ,i] = pseudo_vec[match(colnames(so), names(pseudo_vec))]
   }
   
@@ -26,13 +25,13 @@ Add_pseuodtimes_seurat = function(so,
     df = slingCurves(ps)[[1]]$s[slingCurves(ps)[[1]]$ord, ]
     FeaturePlot(so, features = i,raster = TRUE, raster.dpi=c(1012,1012)) +
       scale_colour_gradientn(colors = colos)
-    ggsave(last_plot(), device = "pdf", filename=paste0("../Figures/Slingshot/", i, ".pdf"), width=10, height=8)
+    ggsave(last_plot(), device = "pdf", filename=paste0("../Figures/Slingshot/", i, ".pdf"), width=8, height=7)
   }
   
   so$mean_slingshot = rowMeans(sling_mat, na.rm=TRUE)
   FeaturePlot(so, features = "mean_slingshot", raster = TRUE, raster.dpi=c(1012,1012)) +
     scale_colour_gradientn(colors = colos)
-  ggsave(last_plot(), device = "pdf", filename=paste0("../Figures/Slingshot/", "mean_slingshot", ".pdf"), width=10, height=8)
+  ggsave(last_plot(), device = "pdf", filename=paste0("../Figures/Slingshot/", "mean_slingshot", ".pdf"), width=8, height=7)
 return(so)
   }
   
@@ -90,11 +89,14 @@ print(dim(gene_mat[ ,cell_vec]))
 
 # Plotting functions ------------------------------------------------------
 
+
 plot_pseuodtime_genes = function(so,
                                  sling_name = "slingPseudotime_1",
+                                 ymax = 2,
                                  genes = c("Otx2","Pax6", "Crx", "Bsx"),
                                  outname = "../Figures/Slingshot/Slingshot1_genes.pdf"){
   library(ggplot2)
+ # library(tidyquant)
   library(RColorBrewer)
   
   gene_mat = matrix(nrow = ncol(so), ncol = length(genes),data = 0)
@@ -110,28 +112,43 @@ plot_pseuodtime_genes = function(so,
   pseudo_vec = so@meta.data[ ,colnames(so@meta.data) == sling_name]
   
   ldf$Pseudotime = as.numeric(pseudo_vec)
-  ldf$Celltype = so$Celltype[match(ldf$Barcode, colnames(so))]
   ldf = ldf[!is.na(ldf$Pseudotime), ]
   
-  g1 = ggplot(ldf, aes(x = Pseudotime, y = value, group.by=variable)) +
-    geom_smooth(aes(col = variable, fill = variable), method = "loess", span = 0.33) +
+  ldf$scaled_Pseudotime = (ldf$Pseudotime - min(ldf$Pseudotime))/(max(ldf$Pseudotime) - min(ldf$Pseudotime))
+  ldf$Celltype = so$Celltype[match(ldf$Barcode, colnames(so))]
+  ldf$Timepoint = so$Timepoint[match(ldf$Barcode, colnames(so))]
+  
+  g1 = ggplot(ldf, aes(x = scaled_Pseudotime, y = value, group.by=variable)) +
+  #  geom_smooth(aes(col = variable, fill = variable), span = 0.9, se = TRUE, n=2000) +
+    #coord_cartesian(ylim = c(0, 2.5)) +
+   # ylim(0, ymax) +
+    geom_smooth(aes(col = variable, fill = variable), method = "loess", span = 0.2, se = FALSE) +
+   # geom_smooth(aes(col = variable, fill = variable), method ="lm", formula = y ~ splines::bs(x, 4))
     theme_bw() +
     th +
     ylab("Expression")
   
-  g2 = ggplot(ldf, aes(x = Pseudotime, y = Celltype, color = Celltype)) +
-    geom_jitter(alpha = 0.5, size = 0.1, width = 0.2, height = 0.2) +
+  g2 = ggplot(ldf, aes(x = scaled_Pseudotime, y = Celltype, color = Celltype)) +
+    geom_boxplot(outlier.shape = NA, aes(fill = Celltype), alpha = 0.8) +
     # scale_color_manual(values = colos ) +
     theme_bw() +
     th +
-    xlab("Timepoint") +
+    xlab("Pseudotime") +
     theme(legend.position = "none")
   
-  g3 = cowplot::plot_grid(plotlist = list(g1, g2),
-                          nrow = 2,
+  g3 = ggplot(ldf, aes(x = scaled_Pseudotime, y = Timepoint, color = Timepoint)) +
+    geom_boxplot(outlier.shape = NA, aes(fill = Timepoint, alpha = 0.8)) +
+    # scale_color_manual(values = colos ) +
+    theme_bw() +
+    th +
+    xlab("Pseudotime") +
+    theme(legend.position = "none")
+  
+  g4 = cowplot::plot_grid(plotlist = list(g1, g2,g3),
+                          nrow = 3,
                           align = "v",
                           axis ="lr",
-                          rel_heights = c(3,1))
+                          rel_heights = c(3,1.5,1.5))
   
-  ggsave(g3, device = "pdf", filename = outname, width=8, height=6)
+  ggsave(g4, device = "pdf", filename = outname, width=9, height=6)
 }
