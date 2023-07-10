@@ -113,6 +113,7 @@ AutoCellType = function(mega, GO, QC_dir ){
   df$Score = apply(resSS, 2, max)
   df$Cluster = colnames(clustmat)
   mega$auto_celltype = df$SSGSEA[match(mega$seurat_clusters, df$Cluster)]
+  
   g1 = DimPlot(mega, group.by= "auto_celltype", label = TRUE)
   ggplot2::ggsave(g1, device = "pdf", filename=file.path(QC_dir, "Auto_celltype.pdf"), width = 10, height = 7)
   
