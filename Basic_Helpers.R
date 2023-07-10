@@ -56,3 +56,16 @@ ProcSeurat = function(mega, vars.to.regress=NULL, nDim = 20, nGenes = 2000, nRes
   
   return(mega)
 }
+
+
+Seurat_to_pseudobulk = function(so, sample_ID){
+  samp_mat = matrix(nrow = nrow(mega), ncol = length(unique(mega$ID)), data = 0)
+  colnames(samp_mat) = unique(mega$ID)
+  rownames(samp_mat) = rownames(mega)
+  for (i in colnames(samp_mat)){
+    cell_filt = (mega$ID == i)
+    total_counts = rowSums(as.matrix(mega@assays$RNA@counts[ ,cell_filt]))
+    samp_mat[ ,i] = total_counts
+  }
+  return(samp_mat)
+}
