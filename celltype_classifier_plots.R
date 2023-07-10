@@ -55,7 +55,8 @@ colnames(bin_tumors) = genes_present
 
 bin_tumors = cbind(bin_tumors, miss_mat)
 print(quantile(rowSums(bin_tumors)))
-bin_tumors = bin_tumors[ ,mm_feats]
+
+bin_tumors = bin_tumors[ ,mm_feats]  ## arrange in same order
 
 preds <- predict(xg_mod, bin_tumors, reshape = TRUE)
 
@@ -63,6 +64,12 @@ preds <- predict(xg_mod, bin_tumors, reshape = TRUE)
 message("Calibrating null predictions")
 rand_mat = preds
 rand_mat[rand_mat > 0 ] = 0 ## set matrix to zero to initialize loop
+<<<<<<< HEAD
+# TODO testing null input instead of random -- doesnt change much
+# null_preds <- predict(xg_mod, rand_mat, reshape = TRUE)
+# rand_mat = null_preds
+=======
+>>>>>>> 25952928a71987dd6bbce47066433df8306250cd
 
 for ( i in 1:nPerm){
 tmp_tumors = bin_tumors
@@ -75,6 +82,10 @@ rand_mat = rand_mat + null_preds
 }
 rand_mat = rand_mat/nPerm
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> 25952928a71987dd6bbce47066433df8306250cd
 annots = data.frame("Cell" = colnames(atlas),
                     "Celltype" = atlas$Celltype)
 
@@ -110,6 +121,43 @@ plot_pred_heatmap(pred_list=output,
   
 max_preds = colnames(preds)[apply(preds, 1, which.max)]
 
+output = list("pred_mat" = preds,
+              "final_prediction" = max_preds,
+              "ID" = tumors$ID,
+              "Subgroup" = tumors$Subgroup,
+              "calibrated_mat" = calibrated_preds)
+
+saveRDS(output, paste0( data_dir, plot_name, "_cell_predictions.rds"))
+
+
+plot_pred_heatmap(pred_list=output,
+                             out_plot_dir=plot_dir,
+                             out_name=paste0(plot_name, "_heatmap"),
+                             threshold=0.5,
+                             subgroup_order=subgroup_order)
+
+plot_pred_heatmap(pred_list=output,
+                  calibrated = TRUE,
+                  out_plot_dir=plot_dir,
+                  out_name=paste0(plot_name, "_heatmap_calibrated"),
+                  threshold=0.4,
+                  subgroup_order=subgroup_order)
+  
+plot_group_pred_heatmap (pred_list=output,
+                  calibrated = FALSE,
+                  out_plot_dir=plot_dir,
+                  out_name=paste0(plot_name, "_Grouped_heatmap"),
+                  threshold=0.5,
+                  subgroup_order= NULL)
+
+plot_group_pred_heatmap (pred_list=output,
+                         calibrated = TRUE,
+                         out_plot_dir=plot_dir,
+                         out_name=paste0(plot_name, "_Grouped_heatmap_calibrated"),
+                         threshold=0.5,
+                         subgroup_order= NULL)
+
+
 celltype_order = c(sort(unique(max_preds)), "Unknown_low_conf")
 
 max_score = apply(preds, 1, max)
@@ -136,6 +184,155 @@ ggplot(ldf, aes(x=Celltype, y = Percent)) +
   th +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
+<<<<<<< HEAD
+#ggsave(last_plot(), 
+#       filename = file.path(plot_dir, paste0(plot_name, "_predictions_subgroup.pdf")),
+#       device="pdf", width = 12, height = 8)
+}
+
+
+
+# Plot a heatmap per sample of average classifier confidence calls --------
+
+plot_pred_heatmap = function(pred_list,
+                             calibrated=FALSE,
+                             out_plot_dir="../Figures/ML",
+                             out_name,
+                             threshold=0.6,
+                             subgroup_order=NULL){
+  library(pheatmap)
+  dir.create(out_plot_dir, showWarnings = FALSE)
+  
+  if (calibrated == TRUE){ 
+    pmat = pred_list$calibrated_mat 
+  } else { 
+    pmat = pred_list$pred_mat
+  }
+  
+  IDs = pred_list$ID
+  subgroup = pred_list$Subgroup
+  
+  stopifnot(length(IDs) == nrow(pmat))
+  
+  
+  samp_mat = matrix(nrow = length(unique(IDs)),
+                    ncol = ncol(pmat),
+                    data = 0)
+  colnames(samp_mat) = colnames(pmat)
+  rownames(samp_mat) = unique(IDs)
+  
+  for (i in unique(IDs)){
+    samp_mat[i, ] = colMeans(pmat[IDs == i, ])
+  }
+  
+  anno_cols = data.frame(row.names =  unique(IDs),
+                         "Subgroup" = subgroup[match( unique(IDs), IDs)])
+  if (!is.null(subgroup_order)){
+    anno_cols$Subgroup = factor(anno_cols$Subgroup, levels = subgroup_order)
+  }
+  
+ # ords = hclust(as.dist(1-cor(t(samp_mat))), method = "ward.D2")
+  #ords = hclust(as.dist(t(samp_mat)), method = "ward.D2")
+ # samp_mat = samp_mat[order(anno_cols$Subgroup, ords$order), ]
+  samp_mat = samp_mat[order(anno_cols$Subgroup), ]
+  cols = colorRampPalette(colors = c("blue4","blue","white","red","red4") )(100)
+  
+  samp_mat[samp_mat > threshold] = threshold
+  p1 = pheatmap(samp_mat,
+                annotation_row = anno_cols,
+                cluster_rows = FALSE,
+                cluster_cols = FALSE,
+                cellwidth = 10,
+                cellheight = 10,
+                color = cols )
+  out_file = file.path(out_plot_dir, paste0(out_name, ".pdf"))
+  
+  pdf(out_file, width = 12, height = 10)
+  print(p1)
+  dev.off()
+  message("Heatmap created --------")
+  return(p1)
+}
+# plot_pred_heatmap(pred_data_path = "../Data/ML/Pineal_celltypes_cell_predictions.rds",
+#                   out_name="PB_pineal",
+#                   subgroup_order=c("PB-miRNA1","PB-miRNA2", "PB-MYC/FOXR2","PB-RB", "PPTID",  
+#                                    "PC","PAT", "PTPR")
+# )
+
+
+
+plot_group_pred_heatmap = function(pred_list,
+                                   calibrated=FALSE,
+                                   out_plot_dir="../Figures/ML",
+                                   out_name,
+                                   threshold=0.6,
+                                   subgroup_order=NULL){
+  library(pheatmap)
+  dir.create(out_plot_dir, showWarnings = FALSE)
+  
+  if (calibrated == TRUE){ 
+    pmat = pred_list$calibrated_mat 
+  } else { 
+    pmat = pred_list$pred_mat
+  }
+  
+  IDs = pred_list$Celltype
+  
+  stopifnot(length(IDs) == nrow(pmat))
+  
+  
+  samp_mat = matrix(nrow = length(unique(IDs)),
+                    ncol = ncol(pmat),
+                    data = 0)
+  colnames(samp_mat) = colnames(pmat)
+  rownames(samp_mat) = unique(IDs)
+  
+  for (i in unique(IDs)){
+    samp_mat[i, ] = colMeans(pmat[IDs == i, ])
+  }
+  
+  anno_cols = data.frame(row.names =  unique(IDs),
+                         "Celltype" = unique(IDs)
+  )
+  # if (!is.null(subgroup_order)){
+  #   anno_cols$Subgroup = factor(anno_cols$Subgroup, levels = subgroup_order)
+  # }
+  # 
+  # ords = hclust(as.dist(1-cor(t(samp_mat))), method = "ward.D2")
+  #ords = hclust(as.dist(t(samp_mat)), method = "ward.D2")
+  # samp_mat = samp_mat[order(anno_cols$Subgroup, ords$order), ]
+  # samp_mat = samp_mat[order(anno_cols$Subgroup), ]
+  cols = colorRampPalette(colors = c("blue4","blue","white","red","red4") )(100)
+  
+  samp_mat[samp_mat > threshold] = threshold
+  p1 = pheatmap(samp_mat,
+                annotation_row = anno_cols,
+                cluster_rows = FALSE,
+                cluster_cols = FALSE,
+                cellwidth = 10,
+                cellheight = 10,
+                color = cols )
+  out_file = file.path(out_plot_dir, paste0(out_name, ".pdf"))
+  
+  pdf(out_file, width = 12, height = 10)
+  print(p1)
+  dev.off()
+  message("Heatmap created --------")
+  return(p1)
+}
+
+
+
+
+Pick_Threshold = function(pred_matrix, threshold=0.33){
+  pred_matrix[pred_matrix < threshold] = NA
+  pick_celltype = apply(pred_matrix, 1, which.max)
+  pick_celltype[ lapply(pick_celltype, length) == 0 ] = NA
+  celltype_col = unlist(pick_celltype)
+  final  = colnames(pred_matrix)[celltype_col]
+  final[is.na(final)] = "Unknown"
+  return(final)
+=======
 ggsave(last_plot(), 
        filename = file.path(plot_dir, paste0(plot_name, "_predictions_subgroup.pdf")),
        device="pdf", width = 12, height = 8)
@@ -203,6 +400,7 @@ plot_pred_heatmap = function(pred_list,
   dev.off()
   message("Heatmap created --------")
   return(p1)
+>>>>>>> 25952928a71987dd6bbce47066433df8306250cd
 }
 # plot_pred_heatmap(pred_data_path = "../Data/ML/Pineal_celltypes_cell_predictions.rds",
 #                   out_name="PB_pineal",
