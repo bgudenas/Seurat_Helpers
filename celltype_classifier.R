@@ -2,7 +2,6 @@
 
 Make_sc_Classifier = function(so,
                               map_path = "~/Annots/Annotables/Mm10.rds",
-<<<<<<< HEAD
                               feats_path = "../Data/ML/ML_features.rds",
                               ML_dir ="../Data/ML/",
                               best_param=NULL,
@@ -10,11 +9,9 @@ Make_sc_Classifier = function(so,
 			                        down_prop = 0.01,
 			                        downsample = FALSE,
                               gene_list_path="/home/bgudenas/Proj/PB_origins/CB_PN_RT_Atlas/Data/genes_expressed/Genes_present_5percent_2datasets.rds"){
-=======
                               feats_path = "../Data/ML_features.rds",
                               out_feats = "../Data/ML_features.rds",
                               best_param=NULL){
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   
 shhh <- suppressPackageStartupMessages
 shhh(library(Seurat))
@@ -72,11 +69,8 @@ feats = feats[feats$p_val_adj <= 0.01 , ]
 ct_feats = feats %>%
   filter(gene %in% pc_genes ) %>% 
   group_by(cluster) %>% 
-<<<<<<< HEAD
   top_n(wt = pct.diff, nfeats) %>% 
-=======
   top_n(wt = avg_log2FC, 100) %>% 
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   .$gene %>% 
   unique
 
@@ -120,11 +114,8 @@ model_output = paste0(ML_dir, "/Xgboost_celltype_model_", nfeats, ".rds")
 
 if (!file.exists(model_output)){
   message("Starting XGBoost")
-<<<<<<< HEAD
   pred_model = param_sweep_xgboost(train, label_2_num, weight = FALSE, best_param=best_param)
-=======
   pred_model = param_sweep_xgboost(train, label_2_num, best_param=best_param)
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   saveRDS(pred_model, model_output)
 } else {
   pred_model = readRDS(model_output)
@@ -166,15 +157,12 @@ make_binary = function(so, q_threshold=0.8, bin_genes){
   genes = c(map$external_gene_name, map$hsapiens_homolog_associated_gene_name)
   genes = genes[genes != ""]
   genes = genes[genes %in% rownames(so)]
-<<<<<<< HEAD
   ## if number of cells is greater than 50000, than randomly select 50k for threshold identification
   if (ncol(so) > 80000 ){
     cell_vec = sample(1:ncol(so), 80000)
-=======
   ## if number of cells is greater than 50000, than randomly select 50k for threshold identificaiton
   if (ncol(so) > 50000 ){
     cell_vec = sample(1:ncol(so), 50000)
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   } else {cell_vec = 1:ncol(so)}
   
   if (grepl("originalexp", names(so@assays))){
@@ -199,17 +187,14 @@ make_binary = function(so, q_threshold=0.8, bin_genes){
    return(ncounts)
 }
 
-<<<<<<< HEAD
 param_sweep_xgboost = function(train, label_2_num, best_param = NULL, weight=TRUE, nround=500){
   
   ## create label weights for imbalanced classes min(class_sizes)/class_sizes
   weight_map = min(table(train$label))/table(train$label)
   weightsData = as.numeric(weight_map[ match(train$label, names(weight_map)) ])
   
-=======
 param_sweep_xgboost = function(train, label_2_num, best_param = NULL, nround=400){
   
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   if (is.null(best_param)){
   message("Starting XGboost grid-search")
   best_param = list()
@@ -275,20 +260,16 @@ param_sweep_xgboost = function(train, label_2_num, best_param = NULL, nround=400
   print("best_round")
   print(nround)
   output = list("best_param" = best_param, "best_round" = nround)
-<<<<<<< HEAD
   }
   message("Making Final XGBoost model ---------")
   if (weight == TRUE){
-=======
   } 
   message("Making Final XGBoost model ---------")
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   md <- xgboost(data=train$data,
                 label = train$label,
                 weight = weightsData,
 		            params=best_param,
  	            	nrounds=nround )
-<<<<<<< HEAD
   } else if (weight == FALSE){
     print("Not using class weights ----------------")
     md <- xgboost(data=train$data,
@@ -296,8 +277,6 @@ param_sweep_xgboost = function(train, label_2_num, best_param = NULL, nround=400
                   params=best_param,
                   nrounds=nround )
     }
-=======
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
 return(md)
 }
 
