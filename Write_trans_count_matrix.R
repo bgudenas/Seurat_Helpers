@@ -12,23 +12,16 @@ message(paste0("dimensions=", dim(so)))
 
 message(paste("Outname=", args[2]))
 
-<<<<<<< HEAD
-
 if (args[3] == "data"){
 print("normalized data")
 counts_df <- so@assays$RNA@data
 } else if (grepl("originalexp", names(so@assays))){
-=======
 if (grepl("originalexp", names(so@assays))){
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
   counts_df = so@assays$originalexp@counts
 } else {
 counts_df <- so@assays$RNA@counts
 }
-<<<<<<< HEAD
 
-=======
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
 fname=args[2]
 # make a column vector and write to a file
 # mat_frame <- 1:counts_df@Dim[2]
