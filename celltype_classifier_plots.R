@@ -1,7 +1,4 @@
 
-
-
-
 # model_path="../../Atlas/Data/Xgboost_celltype_model.rds"
 # atlas_path="../../Atlas/Data/Pineal_Atlas_Final.rds"
 # tumor_path= "../Data/snPB_integrated_all_intron_MTfilt.rds"
@@ -68,8 +65,6 @@ rand_mat[rand_mat > 0 ] = 0 ## set matrix to zero to initialize loop
 # TODO testing null input instead of random -- doesnt change much
 # null_preds <- predict(xg_mod, rand_mat, reshape = TRUE)
 # rand_mat = null_preds
-=======
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
 
 for ( i in 1:nPerm){
 tmp_tumors = bin_tumors
@@ -82,10 +77,6 @@ rand_mat = rand_mat + null_preds
 }
 rand_mat = rand_mat/nPerm
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
 annots = data.frame("Cell" = colnames(atlas),
                     "Celltype" = atlas$Celltype)
 
@@ -184,7 +175,6 @@ ggplot(ldf, aes(x=Celltype, y = Percent)) +
   th +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-<<<<<<< HEAD
 #ggsave(last_plot(), 
 #       filename = file.path(plot_dir, paste0(plot_name, "_predictions_subgroup.pdf")),
 #       device="pdf", width = 12, height = 8)
@@ -323,7 +313,6 @@ plot_group_pred_heatmap = function(pred_list,
 
 
 
-
 Pick_Threshold = function(pred_matrix, threshold=0.33){
   pred_matrix[pred_matrix < threshold] = NA
   pick_celltype = apply(pred_matrix, 1, which.max)
@@ -332,7 +321,6 @@ Pick_Threshold = function(pred_matrix, threshold=0.33){
   final  = colnames(pred_matrix)[celltype_col]
   final[is.na(final)] = "Unknown"
   return(final)
-=======
 ggsave(last_plot(), 
        filename = file.path(plot_dir, paste0(plot_name, "_predictions_subgroup.pdf")),
        device="pdf", width = 12, height = 8)
@@ -400,7 +388,6 @@ plot_pred_heatmap = function(pred_list,
   dev.off()
   message("Heatmap created --------")
   return(p1)
->>>>>>> 25952928a71987dd6bbce47066433df8306250cd
 }
 # plot_pred_heatmap(pred_data_path = "../Data/ML/Pineal_celltypes_cell_predictions.rds",
 #                   out_name="PB_pineal",
