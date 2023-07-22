@@ -8,8 +8,8 @@ Plot_permuted_gene_sets = function(seurat_path,
                                    plot_dir_path,
                                    downsample = FALSE,
                                    out_name="Gene_set_permuted_cutoffs",
-				   nPerm=1000,
-				   pos_thresh = 0.25){
+				                           nPerm=1000,
+				                           pos_thresh = 0.25){
   library(ggplot2)
   library(dplyr)
   library(Seurat)
@@ -56,13 +56,37 @@ GS_names = paste0(names(GS), 1:length(GS))
 #ggsave(last_plot(), device = "pdf", filename = file.path(plot_dir_path, paste0("UMAP_GeneSets_raw_", out_name, ".pdf")), width = 14, height = 14)
 
 cutoffs = c()
+dummy_df = data.frame(
+  g_length = 0,
+  cutoff = 0)
+write.table(dummy_df,
+              file = "Cutoff_vals_tmp.csv",
+              sep = ",",
+              row.names = FALSE)
+
 for (i in names(GS)){
   print(i)
-  cutoffs = c(cutoffs, median(permute_AddModule(mega, 
-					gene_set = GS[[i]],
-					nPerm=nPerm)
-					))
+  g_length = length(GS[[i]])
+  check_vals = read.csv("Cutoff_vals_tmp.csv")
+  if ( g_length %in% check_vals$g_length){
+    message("GS length found -- using stored value ")
+    cutoff_val = check_vals$cutoff[check_vals$g_length == g_length]
+  } else {
+  cutoff_val = median(permute_AddModule(mega, 
+                           gene_set = GS[[i]],
+                           nPerm=nPerm))
+  # Append the new rows to the existing CSV file
+  new_rows = data.frame("g_length" = g_length,
+               "cutoff" = cutoff_val)
+  write.table(new_rows, file = "Cutoff_vals_tmp.csv",
+              sep = ",", 
+              row.names = FALSE,
+              col.names = FALSE,
+              append = TRUE)
+  }
+  cutoffs = c(cutoffs, cutoff_val)
 }
+suppressWarnings(file.remove("Cutoff_vals_tmp.csv", showWarnings=FALSE))
 names(cutoffs) = names(GS)
 
 for ( i in 1:length(cutoffs)){
@@ -126,7 +150,7 @@ ggsave(last_plot(), device = "pdf", filename = file.path(plot_dir_path, paste0("
 }
 }
 
-permute_AddModule = function(gene_set, so, nPerm=100){
+permute_AddModule = function(gene_set, so, nPerm=1000){
   set.seed(54321)
   #perm_mat = matrix(nrow = nPerm, ncol = ncol(so), data = 0)
   perm_vec = vector(mode = "list", length = nPerm)
