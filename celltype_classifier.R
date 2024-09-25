@@ -12,7 +12,7 @@ Make_sc_Classifier = function(so,
                               feats_path = "../Data/ML_features.rds",
                               out_feats = "../Data/ML_features.rds",
                               best_param=NULL){
-  
+## makes a Celltype classifier from a binarizied expression matrix using XGboost
 shhh <- suppressPackageStartupMessages
 shhh(library(Seurat))
 shhh(library(ggplot2))
@@ -23,10 +23,6 @@ dir.create(ML_dir, showWarnings = FALSE)
 
 map = readRDS(map_path)
 map = map[map$gene_biotype == "protein_coding", ]
-#GO = readRDS("~/Annots/GSEA/MisgDB_c2_c5_c6_c8_h1.rds")
-# HS = GO[["HSIAO_HOUSEKEEPING_GENES"]]
-# mm_HS = map$external_gene_name[match(HS, map$hsapiens_homolog_associated_gene_name)]
-# mm_HS = mm_HS[!is.na(mm_HS)]
 
 map = map[!duplicated(map$hsapiens_homolog_associated_gene_name) & !duplicated(map$hsapiens_homolog_associated_gene_name, fromLast = TRUE),  ]
 drops = map$external_gene_name[grepl("^Rpl|^Rps|^mt-", map$external_gene_name)] ## remove ribosomal/ mitocondrial genes
@@ -77,8 +73,6 @@ ct_feats = feats %>%
 message("Number of Features = ", length(ct_feats))
 
 bin_mat = make_binary(so, bin_genes = ct_feats)
-
-#bin_mat = bin_mat[ ,colnames(bin_mat) %in% ct_feats]
 
 annots = data.frame("Cell" = rownames(bin_mat),
                     "Celltype" = so$Celltype)
