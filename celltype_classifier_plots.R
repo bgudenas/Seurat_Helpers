@@ -61,7 +61,6 @@ preds <- predict(xg_mod, bin_tumors, reshape = TRUE)
 message("Calibrating null predictions")
 rand_mat = preds
 rand_mat[rand_mat > 0 ] = 0 ## set matrix to zero to initialize loop
-<<<<<<< HEAD
 # TODO testing null input instead of random -- doesnt change much
 # null_preds <- predict(xg_mod, rand_mat, reshape = TRUE)
 # rand_mat = null_preds
