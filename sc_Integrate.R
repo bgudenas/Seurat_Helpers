@@ -130,7 +130,6 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   print(paste("Total cells =", nCells ))
   print(paste("Total genes =", nrow(so_big)))
   print(as.data.frame(table(so_big$Sample)))
-  
   so_big <- NormalizeData(so_big, normalization.method = "LogNormalize", scale.factor = 10000)
   if (sum(cc.genes$s.genes %in% rownames(so_big)) == 0 ){
     cc.genes.updated.2019$s.genes = stringr::str_to_title(cc.genes.updated.2019$s.genes)
@@ -138,8 +137,8 @@ sc_Integrate = function( samps, ## sample names equal in length to count_paths
   }
   gc()
   so_big <- FindVariableFeatures(object = so_big, nfeatures = 2000, selection.method = "vst", verbose=FALSE)
-  so_big <- CellCycleScoring(so_big, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE, verbose=FALSE)
   if ( CC == TRUE ){
+  so_big <- CellCycleScoring(so_big, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE, verbose=FALSE)
   so_big$CC.Difference <- so_big$S.Score - so_big$G2M.Score
   so_big <- quiet( ScaleData(so_big, vars.to.regress = c("nCount_RNA", "CC.Difference"), verbose=FALSE))
   } else { so_big <- ScaleData(so_big, vars.to.regress = c("nCount_RNA"), verbose=FALSE) }

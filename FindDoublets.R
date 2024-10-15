@@ -50,7 +50,7 @@ so = RunPCA(so)
 so = RunUMAP(so, dims = 1:nDims)
 
 ## DoubletFinder
-sweep.res.list_so = paramSweep_v3(so, PCs = 1:nDims, sct = FALSE)
+sweep.res.list_so = paramSweep(so, PCs = 1:nDims, sct = FALSE)
 sweep.stats_so = summarizeSweep(sweep.res.list_so, GT = FALSE)
 bcmvn_so = find.pK(sweep.stats_so)
 
@@ -60,7 +60,7 @@ print(paste0("pK =", pK ))
 doublet_rate = (nrow(so@meta.data)/500 )* 0.004 ## (0.4%  doublet rate per 500 cells )
 nExp_poi = round(doublet_rate * nrow(so@meta.data))  ## 4% doublet rate
 
-so = doubletFinder_v3(so, PCs = 1:nDims, pN = 0.25, pK = pK, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
+so = doubletFinder(so, PCs = 1:nDims, pN = 0.25, pK = pK, nExp = nExp_poi, reuse.pANN = FALSE, sct = FALSE)
 DF_col =  which(grepl("DF.classifications", colnames(so@meta.data) ))
 
 dub_calls = so@meta.data[ ,DF_col]

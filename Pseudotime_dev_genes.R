@@ -94,6 +94,7 @@ plot_pseuodtime_genes = function(so,
                                  sling_name = "slingPseudotime_1",
                                  ymax = 2,
                                  genes = c("Otx2","Pax6", "Crx", "Bsx"),
+                                 pathways = FALSE,
                                  outname = "../Figures/Slingshot/Slingshot1_genes.pdf"){
   library(ggplot2)
  # library(tidyquant)
@@ -101,11 +102,17 @@ plot_pseuodtime_genes = function(so,
   
   gene_mat = matrix(nrow = ncol(so), ncol = length(genes),data = 0)
   colnames(gene_mat) = genes
-  
   df = data.frame("Barcode" = colnames(so) )
   df = cbind(df, gene_mat)
+  
+  if ( pathways == FALSE){
   for ( i in genes){
     df[ ,i] = as.numeric(so@assays$RNA@data[i, ])
+    }
+  } else if (pathways == TRUE){
+  for (i in genes){
+   df[ ,i] = as.numeric(so@meta.data[ ,i]) 
+    }
   }
   
   ldf = reshape2::melt(df, "Barcode")
@@ -122,7 +129,11 @@ plot_pseuodtime_genes = function(so,
   #  geom_smooth(aes(col = variable, fill = variable), span = 0.9, se = TRUE, n=2000) +
     #coord_cartesian(ylim = c(0, 2.5)) +
    # ylim(0, ymax) +
+<<<<<<< HEAD
     geom_smooth(aes(col = variable, fill = variable), method = "loess", span = 0.2, se = FALSE) +
+=======
+    geom_smooth(aes(col = variable, fill = variable), method = "loess", span = 0.75, se = FALSE) +
+>>>>>>> fd6ac7c (Updating funcs with new seurat)
    # geom_smooth(aes(col = variable, fill = variable), method ="lm", formula = y ~ splines::bs(x, 4))
     theme_bw() +
     th +
@@ -150,5 +161,9 @@ plot_pseuodtime_genes = function(so,
                           axis ="lr",
                           rel_heights = c(3,1.5,1.5))
   
+<<<<<<< HEAD
   ggsave(g4, device = "pdf", filename = outname, width=9, height=6)
+=======
+  ggsave(g4, device = "pdf", filename = outname, width=14, height=8)
+>>>>>>> fd6ac7c (Updating funcs with new seurat)
 }
