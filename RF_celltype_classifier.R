@@ -49,9 +49,8 @@ Make_RF_Classifier = function(so,
   print("Downsampling ------------")
   sce = as.SingleCellExperiment(so)
   assay(sce, "counts") <- normalizeCounts(sce, log = FALSE, downsample = TRUE, down.prop = down_prop)
-  assay(sce, "logcounts") <- normalizeCounts(sce, log = TRUE, downsample = TRUE, down.prop = down_prop)
   so[["RNA"]]$counts = assay(sce, "counts")
-  so[["RNA"]]$data = assay(sce, "logcounts")
+  so = NormalizeData(so)
   }
   ## make training/testing data
   train_data = round(t(as.matrix(so[["RNA"]]$data[features, train_cells])), 2)
@@ -107,6 +106,77 @@ Make_RF_Classifier = function(so,
   output = list("RF_model" = model,
                 "Downsample" = down_prop,
                 "conf_matrix" = conf_mat)
-  out_data = file.path(out_dir, out_name)
-  saveRDS(output, out_data)
+  mod_list_fp = file.path(out_dir, out_name)
+  saveRDS(output, mod_list_fp)
+}
+
+
+# -------------------------------------------------------------------------
+# Summarize tree votes ----------------------------------------------------
+# mod_list_fp = "../Data/ML/RF_model_toplayer_DS10_cellDS_w.rds"
+# new_data_fp = "../../../Datasets/MB_10x_Riemondy/Data/MB_10x_final.rds"
+# new_data_fp = "../../10x/SO/snPB_integrated_Final.rds"
+# hg_map_fp = "../../../../Annots/Annotables/hg38.rds"
+#output = Predict_Model(mod_list_fp, new_data_fp, hg_map_fp)
+
+Predict_Model = function(mod_list_fp, new_data_fp, hg_map_fp, samp_col = "ID"){
+  set.seed(54321)
+  shhh <- suppressPackageStartupMessages
+  shhh(library(Seurat))
+  shhh(library(dplyr))
+  shhh(library(caret))
+  shhh(library(randomForest))
+  
+stopifnot(file.exists(mod_list_fp))
+stopifnot(file.exists(new_data_fp))
+stopifnot(file.exists(hg_map_fp))
+
+map = readRDS(hg_map_fp)
+
+message("Reading mod_list")
+mod_list = readRDS(mod_list_fp)
+model = mod_list$RF_model
+
+message("Reading new_data")
+new_data = readRDS(new_data_fp)
+samp_vec = new_data@meta.data[ ,samp_col]
+tumor_labs = new_data$Celltype
+
+features = colnames(model$trainingData)
+features = features[!grepl("^\\.", features)] ## remove variables appended by caret (.outcome, .weights etc..)
+
+## extract norm counts of new data and rename
+mm_genes = map$mmusculus_homolog_associated_gene_name[match(rownames(new_data), map$external_gene_name)]
+datExpr = new_data[["RNA"]]$data
+rownames(datExpr) = mm_genes
+idx = which(mm_genes %in% features)
+tumor_data = round(t(as.matrix(datExpr[idx, ])), 2)
+## add any missing genes
+missing_genes = features[!(features %in% mm_genes)]
+
+if (length(missing_genes) >= 1){
+  missing_mat = matrix(nrow = nrow(tumor_data), ncol = length(missing_genes), data = 0)
+  colnames(missing_mat) = missing_genes
+  tumor_data = cbind(tumor_data, missing_mat)
+}
+stopifnot(all(features %in% colnames(tumor_data)))
+
+preds = predict(model, tumor_data)
+## assign low conf predictions
+votes_matrix <- predict(model, tumor_data, type = "prob")
+
+ave_votes = c()
+for (i in unique(samp_vec)){
+  cell_idx = colnames(new_data)[samp_vec == i]
+  ave_votes = rbind(ave_votes,
+                    colMeans(votes_matrix[cell_idx, ]))
+}
+rownames(ave_votes) = unique(samp_vec)
+colnames(ave_votes) = colnames(votes_matrix)
+ave_votes = as.data.frame(ave_votes)
+ave_votes$Subgroup = new_data$Subgroup[match(rownames(ave_votes), samp_vec)]
+
+output = list("votes_matrix" = votes_matrix,
+              "ave_votes" = ave_votes)
+return(output)
 }

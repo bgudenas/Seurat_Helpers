@@ -97,10 +97,8 @@ for ( i in 1:length(cutoffs)){
   mega@meta.data[ ,feat] = nes
 }
 if (plot == TRUE){
-<<<<<<< HEAD
 FeaturePlot(mega, features = GS_names, min.cutoff = "q01", max.cutoff = "q90", raster = TRUE, raster.dpi=c(1012,1012), reduction="umap")
 ggsave(last_plot(), device = "pdf", filename = file.path(plot_dir_path, paste0("UMAP_GeneSets_permuted_",out_name, ".pdf")), width = 14, height = 14)
-=======
 FeaturePlot(mega,
             features = GS_names,
             pt.size = 1.5,
@@ -108,7 +106,6 @@ FeaturePlot(mega,
             raster = TRUE, raster.dpi=c(500,500),
             reduction="umap")
 ggsave(last_plot(), device = "pdf", filename = file.path(plot_dir_path, paste0("UMAP_GeneSets_permuted_",out_name, ".pdf")), width = 13, height = 6)
->>>>>>> fd6ac7c (Updating funcs with new seurat)
 }
 
 df = as.data.frame( mega@meta.data[ ,GS_names])
