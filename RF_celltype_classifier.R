@@ -17,6 +17,7 @@ Make_RF_Classifier = function(so,
   annots = data.frame("Cell" = colnames(so),
                       "Celltype" = so$Celltype)
   
+  ## minimum 400 cells per celltype
   keeps = annots %>% 
     group_by(Celltype) %>% 
     summarise(count = n()) %>% 
@@ -40,11 +41,12 @@ Make_RF_Classifier = function(so,
   
   # Calculate class weights
   class_counts <- table(train_annots$Celltype)
-  class_weights <- 1 / (class_counts) ## TRY removing sqrt
+  class_weights <- 1 / (class_counts)
   class_weights <- class_weights / sum(class_weights)
   names(class_weights) <- levels(train_annots$Celltype)
   cell_weights = class_weights[match(train_annots$Celltype, names(class_weights))]
     
+  ## Should downsampling of counts be performed
   if (!is.null(down_prop)){
   print("Downsampling ------------")
   sce = as.SingleCellExperiment(so)
