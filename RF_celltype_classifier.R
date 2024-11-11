@@ -102,8 +102,6 @@ Make_RF_Classifier = function(so,
   if (is.null(down_prop)) down_prop = "no_DS"
   print(conf_mat)
   print("Writing out data")
-  #out_log = file.path(out_dir, paste0("Confusion_matrix", "_dp", down_prop,"_", Sys.Date(),".csv"))
-  #write.csv(conf_mat$table, out_log)
   
   output = list("RF_model" = model,
                 "Downsample" = down_prop,
@@ -122,6 +120,8 @@ Make_RF_Classifier = function(so,
 #output = Predict_Model(mod_list_fp, new_data_fp, hg_map_fp)
 
 Predict_Model = function(mod_list_fp, new_data_fp, hg_map_fp, samp_col = "ID"){
+## Function to take output of Make_RF_Classifier and predict on new human samplels
+## output is summarized into two different dataframe 1) a class probabilities by cell 2) class probs  averaged by sample
   set.seed(54321)
   shhh <- suppressPackageStartupMessages
   shhh(library(Seurat))
